@@ -16,11 +16,13 @@ public class SimpleDeceptionAllSolvers {
 	public static void main(String[] args) throws Exception {
 		DeceptionGame g = new DeceptionGame();
 		// g.generateGame(3, 2, 3);
-		int numConfigs = 3;
+		int numConfigs = 4;
 		int numObs = 3;
-		int numSystems = 4;
-		//seed == 101 has some issues in returning the right strategy for numSystems = 5, numObs = 2, and numConfigs = 5
-		long seed = 103;
+		int numSystems = 10;
+		//seed = 101 has some issues in returning the right strategy for numSystems = 5, numObs = 2, and numConfigs = 5
+		//seed = 103 creates a perfect case for when heuristic doesn't run well, numS = 4, numO = 3, numC = 3
+		//whenever all machines can be assigned to same observable, heuristic doesn't work, otherwise it seems to work
+		long seed = 105; 
 		g.generateGame(numConfigs, numObs, numSystems, seed);
 		if (true)
 			g.printGame();

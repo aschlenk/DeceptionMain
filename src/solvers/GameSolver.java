@@ -79,7 +79,7 @@ public class GameSolver {
 			throw new Exception("Infeasible.");
 		}
 		
-		//writeProblem("CDG.lp");
+		writeProblem("CDG.lp");
 			
 		defenderStrategy = getDefenderStrategy();
 		defenderUtility = getDefenderPayoff();
@@ -109,7 +109,7 @@ public class GameSolver {
 			sigmaMap.put(k, new HashMap<ObservableConfiguration, IloNumVar>());
 			
 			for(ObservableConfiguration o : model.obs){
-				IloNumVar var = cplex.numVar(0.0, 1.0, IloNumVarType.Int, "sigma_k" +  k.id + "_o" + o.id);
+				IloNumVar var = cplex.numVar(0, 1, IloNumVarType.Int, "sigma_k" +  k.id + "_o" + o.id);
 				
 				sigmaMap.get(k).put(o, var);
 				varList.add(var);
@@ -228,6 +228,7 @@ public class GameSolver {
 		}
 
 		// (3) u_{\delta} leq z_{k,\tilde{f}} leq u_[\delta} - (1 - sigma_{k,\tilde{f}}) ubaru_{\delta}
+		// z_k,\tilde{f} -d + ubar{u_\delta}\simga_k,\tilde{f}  \leq -ubar{u_{\delta}}
 		for (Systems k : model.machines) {
 			for (ObservableConfiguration o : model.obs) {
 				// Left side of contraint
@@ -239,21 +240,13 @@ public class GameSolver {
 				// Right side of constraint
 				IloNumExpr expr1 = cplex.diff(zMap.get(k).get(o), dutility);//zMap.get(k).get(o);
 				//expr1 = cplex.diff(expr, zMap.get(k).get(o));//dutility);
-				expr1 = cplex.sum(expr, cplex.diff(minUtility, cplex.prod(minUtility, sigmaMap.get(k).get(o))));
+				//expr1 = cplex.sum(expr1, -minUtility);
+				expr1 = cplex.sum(expr1, cplex.prod(minUtility, sigmaMap.get(k).get(o)));
+				//expr1 = cplex.sum(expr, cplex.diff(minUtility, cplex.prod(minUtility, sigmaMap.get(k).get(o))));
 				
-				constraints.add(cplex.le(expr1, 0, "Z3_RIGHT_K" + k.id + "_O" + o.id));
+				constraints.add(cplex.le(expr1, -minUtility, "Z3_RIGHT_K" + k.id + "_O" + o.id));
 			}
 		}
-
-		// (4) z_{k,\tilde{f}} leq u_{\delta}
-		/*for (Systems k : model.systems) {
-			for (ObservableConfiguration o : model.obs) {
-				IloNumExpr expr = cplex.constant(0.0);
-				expr = cplex.sum(expr, cplex.diff(zMap.get(k).get(o), dutility));
-
-				constraints.add(cplex.le(expr, 0, "Z4_K" + k.id + "_O" + o.id));
-			}
-		}*/
 		
 	}
 
