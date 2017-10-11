@@ -10,6 +10,7 @@ import models.Systems;
 import solvers.GameSolver;
 import solvers.GreedyMaxMinSolver;
 import solvers.HeuristicSolver;
+import solvers.LinearGameSolver;
 
 public class SimpleDeceptionAllSolvers {
 
@@ -28,12 +29,13 @@ public class SimpleDeceptionAllSolvers {
 			g.printGame();
 		
 		runSampleGame(g, numConfigs, numObs, numSystems, seed);
+		runSampleLinearGame(g, numConfigs, numObs, numSystems, seed);
 		
 		System.out.println();
 		System.out.println();
 		//runHeuristicSolver(g);
 		
-		runGreedyMaxMinSolver(g);
+		//runGreedyMaxMinSolver(g);
 		
 	}
 	
@@ -55,6 +57,34 @@ public class SimpleDeceptionAllSolvers {
 		
 		solver.solve();
 		
+	}
+	
+	public static void runSampleLinearGame(DeceptionGame g, int numConfigs, int numObservables, int numSystems, long seed) throws Exception {
+		boolean verbose = false;
+
+		// Need to load cplex libraries
+		String cplexInputFile = "CplexConfig";
+
+		DeceptionGameHelper.loadLibrariesCplex(cplexInputFile);
+
+		
+		// Solve the MILP
+		//GameSolver solver = new GameSolver(g);
+		LinearGameSolver solver = new LinearGameSolver(g);
+
+		solver.solve();
+
+		//String output = "experiments/CDG_"+numConfigs+"_"+numObservables+"_"+numSystems+".csv";
+		
+		//PrintWriter w = new PrintWriter(new BufferedWriter(new FileWriter(output, true)));
+		
+		double tUB = calculateUB(g);
+		
+		System.out.println(numConfigs+", "+numObservables+", "+numSystems+", "+solver.getUtility()+", "+solver.getRuntime()+", "+tUB);
+		
+		//w.println(numConfigs+", "+numObservables+", "+numSystems+", "+solver.getUtility()+", "+solver.getRuntime());
+		
+		//w.close();
 	}
 
 	public static void runSampleGame(DeceptionGame g, int numConfigs, int numObservables, int numSystems, long seed) throws Exception {
