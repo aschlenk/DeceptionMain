@@ -86,7 +86,8 @@ public class LinearGameSolver {
 		
 		runtime = (System.currentTimeMillis()-start)/1000.0;
 		
-		printStrategy(defenderStrategy);
+		//printStrategy(defenderStrategy);
+		printCompactStrategy(defenderStrategy);
 		printExpectedUtility(defenderStrategy);
 		//riskCategoryCoverage = calculateRiskCategoryCoverage();
 		//defenderPayoffs = getDefenderPayoffs();
@@ -299,6 +300,17 @@ public class LinearGameSolver {
 			System.out.print("K"+k.id+": ");
 			for(ObservableConfiguration o : strat.get(k).keySet()){
 				System.out.print("TF"+o.id+" : "+strat.get(k).get(o)+" ");
+			}
+			System.out.println();
+		}
+	}
+	
+	public void printCompactStrategy(Map<Systems, Map<ObservableConfiguration, Double>> strat){
+		for(Systems k : strat.keySet()){
+			System.out.print("K"+k.id+": ");
+			for(ObservableConfiguration o : strat.get(k).keySet()){
+				if(strat.get(k).get(o)>0)
+					System.out.print("TF"+o.id+" : "+strat.get(k).get(o)+" ");
 			}
 			System.out.println();
 		}
