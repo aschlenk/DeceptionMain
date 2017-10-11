@@ -28,7 +28,7 @@ public class LinearGameSolver {
 	private IloNumVar dutility;
 	//private Map<ObservableConfiguation, IloNumVar> dMap;
 	
-	private Map<Systems, Map<ObservableConfiguration, Integer>> defenderStrategy;
+	private Map<Systems, Map<ObservableConfiguration, Double>> defenderStrategy;
 	
 	private List<IloRange> constraints;
 	
@@ -61,7 +61,7 @@ public class LinearGameSolver {
 	}
 	
 	public void solve() throws Exception{
-		defenderStrategy = new HashMap<Systems, Map<ObservableConfiguration, Integer>>();
+		defenderStrategy = new HashMap<Systems, Map<ObservableConfiguration, Double>>();
 		//riskCategoryCoverage = new HashMap<AlertLevel, Map<Base, Double>>();
 		//defenderPayoffs = new HashMap<AlertLevel, Double>();
 		//adversaryPayoffs = new HashMap<AlertLevel, Double>();
@@ -280,13 +280,13 @@ public class LinearGameSolver {
 		return -1.0*getDefenderPayoff();
 	}
 	
-	public Map<Systems, Map<ObservableConfiguration, Integer>> getDefenderStrategy() throws UnknownObjectException, IloException{
-		Map<Systems, Map<ObservableConfiguration, Integer>> strat = new HashMap<Systems, Map<ObservableConfiguration, Integer>>();
+	public Map<Systems, Map<ObservableConfiguration, Double>> getDefenderStrategy() throws UnknownObjectException, IloException{
+		Map<Systems, Map<ObservableConfiguration, Double>> strat = new HashMap<Systems, Map<ObservableConfiguration, Double>>();
 		
 		for(Systems k : sigmaMap.keySet()){
-			strat.put(k, new HashMap<ObservableConfiguration, Integer>());
+			strat.put(k, new HashMap<ObservableConfiguration, Double>());
 			for(ObservableConfiguration o : sigmaMap.get(k).keySet()){
-				strat.get(k).put(o, (int) cplex.getValue(sigmaMap.get(k).get(o))); 
+				strat.get(k).put(o, cplex.getValue(sigmaMap.get(k).get(o))); 
 				//System.out.println(k.id+"  :  "+o.id+"  :  "+((int) cplex.getValue(sigmaMap.get(k).get(o))));
 			}
 		}
@@ -294,7 +294,7 @@ public class LinearGameSolver {
 		return strat;
 	}
 	
-	public void printStrategy(Map<Systems, Map<ObservableConfiguration, Integer>> strat){
+	public void printStrategy(Map<Systems, Map<ObservableConfiguration, Double>> strat){
 		for(Systems k : strat.keySet()){
 			System.out.print("K"+k.id+": ");
 			for(ObservableConfiguration o : strat.get(k).keySet()){
@@ -312,7 +312,7 @@ public class LinearGameSolver {
 		return defenderUtility;
 	}
 	
-	public void printExpectedUtility(Map<Systems, Map<ObservableConfiguration, Integer>> strategy){
+	public void printExpectedUtility(Map<Systems, Map<ObservableConfiguration, Double>> strategy){
 		double expectedU = 0;
 		double total = 0;;
 		for(ObservableConfiguration o : model.obs){

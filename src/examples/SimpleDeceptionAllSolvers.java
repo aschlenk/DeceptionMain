@@ -23,7 +23,7 @@ public class SimpleDeceptionAllSolvers {
 		//seed = 101 has some issues in returning the right strategy for numSystems = 5, numObs = 2, and numConfigs = 5
 		//seed = 103 creates a perfect case for when heuristic doesn't run well, numS = 4, numO = 3, numC = 3
 		//whenever all machines can be assigned to same observable, heuristic doesn't work, otherwise it seems to work
-		long seed = 105; 
+		long seed = 113; 
 		g.generateGame(numConfigs, numObs, numSystems, seed);
 		if (true)
 			g.printGame();
@@ -36,6 +36,8 @@ public class SimpleDeceptionAllSolvers {
 		//runHeuristicSolver(g);
 		
 		//runGreedyMaxMinSolver(g);
+		//Should write a greedymaxmin solver that works with a general set of constraints
+		//Also should incorporate a partial strategy then greedy max min assigning the rest
 		
 	}
 	
