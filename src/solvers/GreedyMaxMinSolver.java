@@ -14,6 +14,8 @@ public class GreedyMaxMinSolver {
 	private Map<Systems, Map<ObservableConfiguration, Integer>> greedyStrategy;
 	private Map<ObservableConfiguration, Double> euAllObs;
 	
+	private double defenderUtility;
+	
 	public GreedyMaxMinSolver(DeceptionGame g){
 		game = g;
 		
@@ -23,7 +25,7 @@ public class GreedyMaxMinSolver {
 		//Calculate the f tildes which have the lowest expected utility
 		euAllObs = calculateEUAllObs(game);
 		for (ObservableConfiguration o : euAllObs.keySet()) {
-			System.out.println("EU1(o" + o.id + "): " + euAllObs.get(o));
+//			/System.out.println("EU1(o" + o.id + "): " + euAllObs.get(o));
 		}
 		
 		
@@ -59,8 +61,8 @@ public class GreedyMaxMinSolver {
 			//System.out.println();
 		}
 		
-		printStrategy(greedyStrategy);
-		printExpectedUtility(greedyStrategy);
+		//printStrategy(greedyStrategy);
+		//printExpectedUtility(greedyStrategy);
 		ObservableEU maxminUtil = calculateMaxMinUtility(greedyStrategy);
 		//System.out.println(greedyStrategy);
 		
@@ -70,10 +72,10 @@ public class GreedyMaxMinSolver {
 		 * Right now we will correct the strategy here with switches! 
 		 * Later this could be a separate function which will locally maximize some strategy by switching machines
 		 */
-		locallyMaximizeSwitching();
+		//locallyMaximizeSwitching();
 		
 		//Should also do a locally maximize swap from systems covered by an observable to the maxmin abservable
-		locallyMaximizeSwap();
+		//locallyMaximizeSwap();
 	}
 	
 	public void locallyMaximizeSwap(){
@@ -494,6 +496,7 @@ public class GreedyMaxMinSolver {
 		}
 		
 		ObservableEU obsMin = new ObservableEU(minkey, min);
+		defenderUtility = obsMin.eu;
 		
 		return obsMin;
 	}
@@ -568,6 +571,10 @@ public class GreedyMaxMinSolver {
 	
 	public Map<Systems, Map<ObservableConfiguration, Integer>> getGreedyStrategy(){
 		return greedyStrategy;
+	}
+	
+	public double getDefenderUtility(){
+		return defenderUtility;
 	}
 	
 }

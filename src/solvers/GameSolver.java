@@ -98,8 +98,8 @@ public class GameSolver {
 		runtime = (System.currentTimeMillis()-start)/1000.0;
 		
 		//printStrategy(defenderStrategy);
-		printCompactStrategy(defenderStrategy);
-		printExpectedUtility(defenderStrategy);
+		//printCompactStrategy(defenderStrategy);
+		//printExpectedUtility(defenderStrategy);
 		//riskCategoryCoverage = calculateRiskCategoryCoverage();
 		//defenderPayoffs = getDefenderPayoffs();
 		//adversaryPayoffs = getAdversaryPayoffs();
@@ -166,7 +166,7 @@ public class GameSolver {
 		//Need to set z constraints
 		setZConstraints();
 		//Need to set bounds
-		setObservableBounds();
+		//setObservableBounds();
 		//Set 0 value constraints for observables that can't be assigned to a system
 		setZeroConstraints();
 		
@@ -384,6 +384,19 @@ public class GameSolver {
 			total=0;
 		}
 		
+	}
+	
+	public void deleteVars() throws IloException{
+		sigmaMap.clear();
+		zMap.clear();
+		
+		constraints.clear();
+		
+		if(cplex != null)
+			cplex.end();
+		//cplex.clearModel();
+		
+		cplex = null;
 	}
 	
 }

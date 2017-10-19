@@ -17,13 +17,14 @@ import models.DeceptionGame;
 import models.ObservableConfiguration;
 import models.Systems;
 
-public class MarginalSolver {
+public class UpperBoundMILP {
 	
 	private DeceptionGame model;
 	
 	private IloCplex cplex;
 	
 	private Map<Systems, Map<ObservableConfiguration, IloNumVar>> nMap;
+	private Map<ObservableConfiguration, IloNumVar> numObsMap;
 	private IloNumVar dutility;
 	//private Map<ObservableConfiguation, IloNumVar> dMap;
 	
@@ -41,20 +42,16 @@ public class MarginalSolver {
 	
 	private Map<ObservableConfiguration, Integer> bounds;
 	
-	public MarginalSolver(DeceptionGame g){
+	public UpperBoundMILP(DeceptionGame g){
 		this.model = g;
-	}
-	
-	public MarginalSolver(DeceptionGame g, Map<ObservableConfiguration, Integer> bounds){
-		this.model = g;
-		this.bounds = bounds;
 	}
 	
 	private void loadProblem() throws IloException{
 		nMap = new HashMap<Systems, Map<ObservableConfiguration, IloNumVar>>();
+		numObsMap = new HashMap<ObservableConfiguration, IloNumVar>();
 		
 		cplex = new IloCplex();
-		cplex.setName("DECEPTION");
+		cplex.setName("DECEPTIONUB");
 		//cplex.setParam(IloCplex.IntParam.RootAlg, IloCplex.Algorithm.Barrier);
 		//cplex.setParam(IloCplex.IntParam.BarCrossAlg, IloCplex.Algorithm.None);
 		//cplex.setParam(IloCplex.IntParam.BarAlg, 0);
@@ -122,6 +119,15 @@ public class MarginalSolver {
 			}
 		}
 		
+		for(ObservableConfiguration o : model.obs){
+			int upperBound = calculateMaxAssignable(o);
+			
+			IloNumVar var = cplex.numVar(0, upperBound, IloNumVarType.Int, "NUM_o" + o.id);
+			
+			numObsMap.put(o, var);
+			varList.add(var);
+		}
+		
 		for(Systems k : model.machines){
 			if(minUtility > k.f.utility){
 				minUtility = k.f.utility;
@@ -144,8 +150,13 @@ public class MarginalSolver {
 		setUtilityConstraints();
 		//Need to set single observable per system constraint
 		sumObservableConfigurationRow();
-		//Need to set bounds
-		setObservableBounds();
+		
+		//Sum of N_{\tilde{f}} = |K|
+		setAllMachinesCovered();
+		
+		//sum over all machines for a marginal is equal to N_{\tilde{f}}
+		setObservableSum();
+		
 		//Set 0 value constraints for observables that can't be assigned to a system
 		setZeroConstraints();
 		
@@ -165,7 +176,7 @@ public class MarginalSolver {
 		//This is going to be in terms of the z contraints for each \tilde{f} \in \tilde{F}
 		for(ObservableConfiguration o : model.obs){
 			IloNumExpr expr = cplex.constant(0.0);
-			expr = cplex.sum(expr, cplex.prod(bounds.get(o), dutility));
+			expr = cplex.sum(expr, cplex.prod(numObsMap.get(o), dutility));
 			
 			for(Systems k : model.machines){
 				expr = cplex.diff(expr, cplex.prod(k.f.utility, nMap.get(k).get(o)));
@@ -176,17 +187,26 @@ public class MarginalSolver {
 		
 	}
 	
-	private void setObservableBounds() throws IloException{
-		for(ObservableConfiguration o : bounds.keySet()){
+	private void setObservableSum() throws IloException{
+		for(ObservableConfiguration o : model.obs){
 			IloNumExpr expr = cplex.constant(0.0);
 			
 			for(Systems k : model.machines){
 				expr = cplex.sum(expr, nMap.get(k).get(o));
 			}
-			constraints.add(cplex.eq(expr, bounds.get(o), "EQUAL_o"+o.id));
+			
+			expr = cplex.diff(expr, numObsMap.get(o));
+			
+			constraints.add(cplex.eq(expr, 0.0, "EQUAL_o"+o.id));
 		}
-		
-		
+	}
+	
+	private void setAllMachinesCovered() throws IloException{
+		IloNumExpr expr = cplex.constant(0.0);
+		for(ObservableConfiguration o : model.obs){
+			expr = cplex.sum(expr, numObsMap.get(o));
+		}
+		constraints.add(cplex.eq(expr, model.machines.size(), "SUM_NUM"));
 	}
 
 	private void setZeroConstraints() throws IloException {
@@ -247,6 +267,15 @@ public class MarginalSolver {
 		return strat;
 	}
 	
+	private int calculateMaxAssignable(ObservableConfiguration o){
+		int assignable = 0;
+		for(Systems k : model.machines){
+			if(o.configs.contains(k.f))
+				assignable++;
+		}
+		return assignable;		
+	}
+	
 	public void printStrategy(Map<Systems, Map<ObservableConfiguration, Double>> strat){
 		for(Systems k : strat.keySet()){
 			System.out.print("K"+k.id+": ");
@@ -289,18 +318,6 @@ public class MarginalSolver {
 			total=0;
 		}
 		
-	}
-	
-	public void deleteVars() throws IloException{
-		nMap.clear();
-		
-		constraints.clear();
-		
-		if(cplex != null)
-			cplex.end();
-		//cplex.clearModel();
-		
-		cplex = null;
 	}
 	
 }

@@ -39,10 +39,10 @@ public class ObservableConfiguration {
 	}
 	
 	public String toString(){
-		String output = name+" Configs: ";
-		for(Configuration f : configs){
+		String output = name;//+" Configs: ";
+		/*for(Configuration f : configs){
 			output += f.name+", ";
-		}
+		}*/
 		return output;
 	}
 	

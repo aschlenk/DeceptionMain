@@ -40,6 +40,7 @@ public class PureStrategySolver {
 	private double defenderUtility;
 	
 	private Map<ObservableConfiguration, Integer> bounds;
+	private boolean feasible = true;
 	
 	public PureStrategySolver(DeceptionGame g, Map<ObservableConfiguration, Integer> bounds){
 		this.model = g;
@@ -75,21 +76,26 @@ public class PureStrategySolver {
 		cplex.solve();
 			
 		if(!cplex.isPrimalFeasible()){
-			writeProblem("Infeasible.lp");
+			//System.out.println("Pure Strategy is Infeasible");
+			//writeProblem("Infeasible.lp");
 			//writeProblem("Infeasible.sol.txt");
-			throw new Exception("Infeasible.");
+			//throw new Exception("Infeasible.");
+			feasible = false;
 		}
 		
-		writeProblem("CDG.lp");
+		//writeProblem("CDG.lp");
 			
-		defenderStrategy = getDefenderStrategy();
-		defenderUtility = getDefenderPayoff();
-		
+		if(feasible){
+			defenderStrategy = getDefenderStrategy();
+			defenderUtility = getDefenderPayoff();
+
+			printCompactStrategy(defenderStrategy);
+			System.out.println("Utility: "+defenderUtility);
+		}
 		runtime = (System.currentTimeMillis()-start)/1000.0;
 		
 		//printStrategy(defenderStrategy);
-		printCompactStrategy(defenderStrategy);
-		printExpectedUtility(defenderStrategy);
+		//printExpectedUtility(defenderStrategy);
 		//riskCategoryCoverage = calculateRiskCategoryCoverage();
 		//defenderPayoffs = getDefenderPayoffs();
 		//adversaryPayoffs = getAdversaryPayoffs();
@@ -285,6 +291,10 @@ public class PureStrategySolver {
 			total=0;
 		}
 		
+	}
+	
+	public boolean isFeasible(){
+		return feasible;
 	}
 	
 }

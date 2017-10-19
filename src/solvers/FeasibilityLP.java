@@ -17,14 +17,13 @@ import models.DeceptionGame;
 import models.ObservableConfiguration;
 import models.Systems;
 
-public class MarginalSolver {
+public class FeasibilityLP {
 	
 	private DeceptionGame model;
 	
 	private IloCplex cplex;
 	
 	private Map<Systems, Map<ObservableConfiguration, IloNumVar>> nMap;
-	private IloNumVar dutility;
 	//private Map<ObservableConfiguation, IloNumVar> dMap;
 	
 	private Map<Systems, Map<ObservableConfiguration, Double>> defenderStrategy;
@@ -39,22 +38,34 @@ public class MarginalSolver {
 	
 	private double defenderUtility;
 	
-	private Map<ObservableConfiguration, Integer> bounds;
+	private Map<ObservableConfiguration, Integer> bounds = null;
+	private Map<Systems, Map<ObservableConfiguration, Integer>> fixedConstraints = null;
 	
-	public MarginalSolver(DeceptionGame g){
+	private double alpha;
+	private boolean feasible = true;
+	
+	public FeasibilityLP(DeceptionGame g, double alpha){
 		this.model = g;
+		this.alpha = alpha;
+	}
+
+	public FeasibilityLP(DeceptionGame g, double alpha, Map<ObservableConfiguration, Integer> bounds){
+		this.model = g;
+		this.alpha = alpha;
+		this.bounds = bounds;
 	}
 	
-	public MarginalSolver(DeceptionGame g, Map<ObservableConfiguration, Integer> bounds){
+	public FeasibilityLP(DeceptionGame g, double alpha, Map<Systems, Map<ObservableConfiguration, Integer>> constraints, boolean doesntmatter){
 		this.model = g;
-		this.bounds = bounds;
+		this.alpha = alpha;
+		this.fixedConstraints = constraints;
 	}
 	
 	private void loadProblem() throws IloException{
 		nMap = new HashMap<Systems, Map<ObservableConfiguration, IloNumVar>>();
 		
 		cplex = new IloCplex();
-		cplex.setName("DECEPTION");
+		cplex.setName("FEASIBLELP");
 		//cplex.setParam(IloCplex.IntParam.RootAlg, IloCplex.Algorithm.Barrier);
 		//cplex.setParam(IloCplex.IntParam.BarCrossAlg, IloCplex.Algorithm.None);
 		//cplex.setParam(IloCplex.IntParam.BarAlg, 0);
@@ -79,25 +90,26 @@ public class MarginalSolver {
 		cplex.solve();
 			
 		if(!cplex.isPrimalFeasible()){
-			writeProblem("Infeasible.lp");
+		//	System.out.println("Problem is Infeasible");
+			feasible = false;
+			//writeProblem("Infeasible.lp");
 			//writeProblem("Infeasible.sol.txt");
-			throw new Exception("Infeasible.");
+			//throw new Exception("Infeasible.");
+		}else{
+		//	System.out.println("Problem is Feasible for Alpha: "+alpha);
 		}
-		
-		writeProblem("CDG.lp");
+		//writeProblem("FLP.lp");
 			
-		defenderStrategy = getDefenderStrategy();
-		defenderUtility = getDefenderPayoff();
+		if(getDefenderStrategy() != null)
+			defenderStrategy = getDefenderStrategy();
+		//defenderUtility = getDefenderPayoff();
 		
 		runtime = (System.currentTimeMillis()-start)/1000.0;
 		
-		//printStrategy(defenderStrategy);
-		printCompactStrategy(defenderStrategy);
-		printExpectedUtility(defenderStrategy);
-		//riskCategoryCoverage = calculateRiskCategoryCoverage();
-		//defenderPayoffs = getDefenderPayoffs();
-		//adversaryPayoffs = getAdversaryPayoffs();
-		//adversaryStrategies = getAdversaryStrategies();
+		//if(getDefenderStrategy() != null)
+			//printStrategy(defenderStrategy);
+			//printCompactStrategy(defenderStrategy);
+			//printExpectedUtility(defenderStrategy);
 		
 		//System.out.println("Defender Utility: "+getDefenderPayoff());
 
@@ -122,16 +134,6 @@ public class MarginalSolver {
 			}
 		}
 		
-		for(Systems k : model.machines){
-			if(minUtility > k.f.utility){
-				minUtility = k.f.utility;
-			}
-		}
-		
-		dutility = cplex.numVar(minUtility, 0, IloNumVarType.Float, "d");
-		
-		varList.add(dutility);
-		
 		IloNumVar[] v = new IloNumVar[varList.size()];
 
 		cplex.add(varList.toArray(v));
@@ -144,8 +146,13 @@ public class MarginalSolver {
 		setUtilityConstraints();
 		//Need to set single observable per system constraint
 		sumObservableConfigurationRow();
-		//Need to set bounds
-		setObservableBounds();
+		
+		//Set constraints for bounds on N_{\tilde{f}}
+		setAssignmentConstraints();
+		
+		//sum over all machines for a marginal is equal to N_{\tilde{f}}
+		setObservableSum();
+		
 		//Set 0 value constraints for observables that can't be assigned to a system
 		setZeroConstraints();
 		
@@ -156,7 +163,7 @@ public class MarginalSolver {
 
 	private void initObjective() throws IloException{
 		//Should be correct objective
-		IloNumExpr expr = dutility;
+		IloNumExpr expr = cplex.constant(1.0);
 		
 		cplex.addMaximize(expr);
 	}
@@ -165,28 +172,72 @@ public class MarginalSolver {
 		//This is going to be in terms of the z contraints for each \tilde{f} \in \tilde{F}
 		for(ObservableConfiguration o : model.obs){
 			IloNumExpr expr = cplex.constant(0.0);
-			expr = cplex.sum(expr, cplex.prod(bounds.get(o), dutility));
+			
+			for(Systems k : model.machines){
+				expr = cplex.sum(expr, cplex.prod(alpha, nMap.get(k).get(o)));
+			}
 			
 			for(Systems k : model.machines){
 				expr = cplex.diff(expr, cplex.prod(k.f.utility, nMap.get(k).get(o)));
 			}
+			
 			
 			constraints.add(cplex.le(expr, 0.0, "UTILITY_TF_"+o.id));
 		}
 		
 	}
 	
-	private void setObservableBounds() throws IloException{
-		for(ObservableConfiguration o : bounds.keySet()){
+	private void setAssignmentConstraints() throws IloException{
+		//System.out.println("Setting Assignment Constraints");
+		if(bounds != null){
+			for(ObservableConfiguration o : bounds.keySet()){
+				//System.out.println("O"+o.id);
+				IloNumExpr expr = cplex.constant(0.0);
+				
+				for(Systems k : model.machines){
+					expr = cplex.sum(expr, nMap.get(k).get(o));
+				}
+	
+				constraints.add(cplex.eq(expr, bounds.get(o), "NUM_TF_"+o.id));
+			}
+		}
+		
+		if(fixedConstraints != null){
+			for(Systems k : fixedConstraints.keySet()){
+				for(ObservableConfiguration o : fixedConstraints.get(k).keySet()){
+					//System.out.println("O"+o.id);
+					IloNumExpr expr = nMap.get(k).get(o);
+		
+					if(fixedConstraints.get(k).get(o) == 0){
+						constraints.add(cplex.le(expr, 0, "NUM_K"+k.id+"_TF_"+o.id));
+					}else{ //should be equal to 1
+						constraints.add(cplex.ge(expr, 1, "NUM_K"+k.id+"_TF_"+o.id));
+					}
+				}
+			}
+		}
+	}
+	
+	private void setObservableSum() throws IloException{
+		/*for(ObservableConfiguration o : model.obs){
 			IloNumExpr expr = cplex.constant(0.0);
 			
 			for(Systems k : model.machines){
 				expr = cplex.sum(expr, nMap.get(k).get(o));
 			}
-			constraints.add(cplex.eq(expr, bounds.get(o), "EQUAL_o"+o.id));
+			
+			expr = cplex.diff(expr, numObsMap.get(o));
+			
+			constraints.add(cplex.eq(expr, 0.0, "EQUAL_o"+o.id));
+		}*/
+	}
+	
+	private void setAllMachinesCovered() throws IloException{
+		/*IloNumExpr expr = cplex.constant(0.0);
+		for(ObservableConfiguration o : model.obs){
+			expr = cplex.sum(expr, numObsMap.get(o));
 		}
-		
-		
+		constraints.add(cplex.eq(expr, model.machines.size(), "SUM_NUM"));*/
 	}
 
 	private void setZeroConstraints() throws IloException {
@@ -224,9 +275,7 @@ public class MarginalSolver {
 	}
 	
 	public double getDefenderPayoff() throws IloException{
-		double utility = cplex.getValue(dutility);
-		
-		return utility;
+		return 1;
 	}
 	
 	public double getAdversaryPayoff() throws IloException{
@@ -236,15 +285,28 @@ public class MarginalSolver {
 	public Map<Systems, Map<ObservableConfiguration, Double>> getDefenderStrategy() throws UnknownObjectException, IloException{
 		Map<Systems, Map<ObservableConfiguration, Double>> strat = new HashMap<Systems, Map<ObservableConfiguration, Double>>();
 		
-		for(Systems k : nMap.keySet()){
-			strat.put(k, new HashMap<ObservableConfiguration, Double>());
-			for(ObservableConfiguration o : nMap.get(k).keySet()){
-				strat.get(k).put(o, cplex.getValue(nMap.get(k).get(o))); 
-				//System.out.println(k.id+"  :  "+o.id+"  :  "+((int) cplex.getValue(sigmaMap.get(k).get(o))));
+		if(feasible){
+			for(Systems k : nMap.keySet()){
+				strat.put(k, new HashMap<ObservableConfiguration, Double>());
+				for(ObservableConfiguration o : nMap.get(k).keySet()){
+					strat.get(k).put(o, cplex.getValue(nMap.get(k).get(o))); 
+					//System.out.println(k.id+"  :  "+o.id+"  :  "+((int) cplex.getValue(sigmaMap.get(k).get(o))));
+				}
 			}
+			
+			return strat;
+		}else{
+			return null;
 		}
-		
-		return strat;
+	}
+	
+	private int calculateMaxAssignable(ObservableConfiguration o){
+		int assignable = 0;
+		for(Systems k : model.machines){
+			if(o.configs.contains(k.f))
+				assignable++;
+		}
+		return assignable;		
 	}
 	
 	public void printStrategy(Map<Systems, Map<ObservableConfiguration, Double>> strat){
@@ -274,6 +336,10 @@ public class MarginalSolver {
 	
 	public double getUtility(){
 		return defenderUtility;
+	}
+	
+	public boolean getFeasible(){
+		return feasible;
 	}
 	
 	public void printExpectedUtility(Map<Systems, Map<ObservableConfiguration, Double>> strategy){
