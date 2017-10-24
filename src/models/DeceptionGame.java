@@ -1,7 +1,14 @@
 package models;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.Scanner;
 
 public class DeceptionGame {
 
@@ -118,9 +125,188 @@ public class DeceptionGame {
 			System.out.println(o.toString());
 		}
 		
-		for(Configuration f : configs){
-			System.out.println(f.toString());
+//		for(Configuration f : configs){
+//			System.out.println(f.toString());
+//		}
+	}
+
+	public void readInGame(String dir, int numConfigs, int numObs, int numSystems, int gamenum, int experimentnum) throws FileNotFoundException{
+		//Need to read in main file to set configurations, observables and systems
+		Scanner s = new Scanner(new File("input/experiment"+experimentnum+"/GameFile_"+numConfigs+"_"+numObs+"_"+numSystems+"_"+gamenum+"_"+experimentnum+".txt"));
+		
+		//read in configurations file
+		String configFile = s.nextLine();
+		readInConfigurations(dir, configFile, gamenum, experimentnum);
+			
+		//System.out.println(configs);
+		
+		//read in observables
+		String observableFile = s.nextLine();
+		readInObservables(dir, observableFile, gamenum, experimentnum);
+		
+//		System.out.println(obs);
+		
+		//read in systems
+		String systemfile = s.nextLine();
+		readInSystems(dir, systemfile, gamenum, experimentnum);
+		
+//		System.out.println(machines);
+		
+	}
+	
+	private void readInSystems(String dir, String systemFile, int gamenum, int experimentnum) throws FileNotFoundException{
+		int index = systemFile.lastIndexOf(' ');
+		systemFile = dir+systemFile.substring(index+1);
+//		System.out.println(systemFile);
+		
+		Scanner s1 = new Scanner(new File(systemFile));
+		s1.useDelimiter(",");
+		s1.nextLine(); //skip over header
+		while(s1.hasNext()){
+			int sysid = Integer.parseInt(s1.next());
+			int conf = Integer.parseInt(s1.next());
+			s1.nextLine();
+			
+			Systems k = new Systems(sysid, findConfiguration(conf));//configs.get(conf-1));
+			machines.add(k);
 		}
+		
+		s1.close();
+		
+		
+	}
+	
+	private void readInObservables(String dir, String observableFile, int gamenum, int experimentnum) throws FileNotFoundException{
+		int index = observableFile.lastIndexOf(' ');
+		observableFile = dir+observableFile.substring(index+1);
+//		System.out.println(observableFile);
+		
+		Scanner s1 = new Scanner(new File(observableFile));
+		s1.useDelimiter(",");
+		s1.nextLine(); //skip over header
+		while(s1.hasNext()){
+			int obsid = Integer.parseInt(s1.next());
+			String maskable = s1.next();
+			s1.nextLine();
+			
+			ObservableConfiguration o = new ObservableConfiguration(obsid);
+			//Need to parse maskable
+			Scanner s2 = new Scanner(maskable);
+			s2.useDelimiter("-");
+			while(s2.hasNext()){
+				int f = s2.nextInt();
+				o.addConfiguration(findConfiguration(f));
+				//o.addConfiguration(configs.get(f-1));
+			}
+			obs.add(o);
+			//configs.add(f);
+		}
+		
+		s1.close();
+	}
+	
+	private Configuration findConfiguration(int id){
+		for(Configuration f : configs){
+			if(f.id == id)
+				return f;
+		}
+		return null; //not found
+	}
+	
+	private void readInConfigurations(String dir, String configFile, int gamenum, int experimentnum) throws FileNotFoundException{
+		int index = configFile.lastIndexOf(' ');
+		configFile = dir+configFile.substring(index+1);
+//		System.out.println(configFile);
+		
+		Scanner s1 = new Scanner(new File(configFile));
+		s1.useDelimiter(",");
+		s1.nextLine(); //skip over header
+		while(s1.hasNext()){
+			int configid = Integer.parseInt(s1.next());
+			int util = Integer.parseInt(s1.next());
+			s1.nextLine();
+			Configuration f = new Configuration(configid, util); //config id starts at 1 as well!
+			configs.add(f);
+		}
+		
+		s1.close();
+	}
+	
+	public void exportGame(int gamenum, int experimentnum) throws IOException{
+		//Need to create file for configurations
+		exportConfigurations(gamenum, experimentnum);
+		
+		//Need to create file for observables
+		exportObservables(gamenum, experimentnum);
+		
+		//Need to create file for systems!
+		exportSystems(gamenum, experimentnum);
+		
+		//Create main file that stores the names to lookup other files
+		createMainFile(gamenum, experimentnum);
+		
+	}
+	
+	private void createMainFile(int gamenum, int experimentnum) throws IOException{
+		String filename = "input/experiment"+experimentnum+"/GameFile_"+configs.size()+"_"+obs.size()+"_"+machines.size()+"_"+gamenum+"_"+experimentnum+".txt";
+		PrintWriter w = new PrintWriter(new BufferedWriter(new FileWriter(filename)));
+		
+		w.println("Configurations = input/experiment"+experimentnum+"/configurations/Configurations_"+configs.size()+"_"+obs.size()+"_"+machines.size()+"_"+gamenum+"_"+experimentnum+".csv");
+		w.println("Observables = input/experiment"+experimentnum+"/observables/Observables_"+configs.size()+"_"+obs.size()+"_"+machines.size()+"_"+gamenum+"_"+experimentnum+".csv");
+		w.println("Systems = input/experiment"+experimentnum+"/systems/Systems_"+configs.size()+"_"+obs.size()+"_"+machines.size()+"_"+gamenum+"_"+experimentnum+".csv");
+		
+		w.close();
+		
+	}
+	
+	private void exportSystems(int gamenum, int experimentnum) throws IOException{
+		String filename = "input/experiment"+experimentnum+"/systems/Systems_"+configs.size()+"_"+obs.size()+"_"+machines.size()+"_"+gamenum+"_"+experimentnum+".csv";
+		PrintWriter w = new PrintWriter(new BufferedWriter(new FileWriter(filename)));
+		
+		//Header line
+		w.println("System Num, Configuration");
+		
+		//Might print out of order, maybe want to change this so id = 1 first, id = 2 second...
+		for(Systems k : machines)
+			w.println(k.id+","+k.f.id+",");
+		
+		w.close();
+		
+	}
+	
+	private void exportObservables(int gamenum, int experimentnum) throws IOException{
+		String filename = "input/experiment"+experimentnum+"/observables/Observables_"+configs.size()+"_"+obs.size()+"_"+machines.size()+"_"+gamenum+"_"+experimentnum+".csv";
+		PrintWriter w = new PrintWriter(new BufferedWriter(new FileWriter(filename)));
+		
+		//Header line
+		w.println("Observable Num, Coverable Configurations");
+		
+		//Might print out of order, maybe want to change this so id = 1 first, id = 2 second...
+		for(ObservableConfiguration o : obs){
+			w.print(o.id+",");
+			for(Configuration f : o.configs){
+				w.print(f.id+"-");
+			}
+			w.println(",");
+		}
+		
+		w.close();
+		
+	}
+	
+	private void exportConfigurations(int gamenum, int experimentnum) throws IOException{
+		String filename = "input/experiment"+experimentnum+"/configurations/Configurations_"+configs.size()+"_"+obs.size()+"_"+machines.size()+"_"+gamenum+"_"+experimentnum+".csv";
+		PrintWriter w = new PrintWriter(new BufferedWriter(new FileWriter(filename)));
+		
+		//Header line
+		w.println("Config Num, Utility");
+		
+		//Might print out of order, maybe want to change this so id = 1 first, id = 2 second...
+		for(Configuration f : configs)
+			w.println(f.id+","+f.utility+",");
+		
+		w.close();
+		
 	}
 
 }

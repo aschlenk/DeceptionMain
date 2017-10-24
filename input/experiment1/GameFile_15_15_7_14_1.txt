@@ -1,0 +1,3 @@
+Configurations = input/experiment1/configurations/Configurations_15_15_7_14_1.csv
+Observables = input/experiment1/observables/Observables_15_15_7_14_1.csv
+Systems = input/experiment1/systems/Systems_15_15_7_14_1.csv

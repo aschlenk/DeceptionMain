@@ -17,6 +17,13 @@ public class ObservableConfiguration {
 		configs = new ArrayList<Configuration>();
 	}
 	
+	public ObservableConfiguration(int id){
+		name = "f~"+ID;
+		this.id = id;
+		ID++;
+		configs = new ArrayList<Configuration>();
+	}
+	
 	public ObservableConfiguration(double utility){
 		name = "f~"+ID;
 		this.utility = utility;
@@ -39,10 +46,10 @@ public class ObservableConfiguration {
 	}
 	
 	public String toString(){
-		String output = name;//+" Configs: ";
-		/*for(Configuration f : configs){
+		String output = name+" Configs: ";
+		for(Configuration f : configs){
 			output += f.name+", ";
-		}*/
+		}
 		return output;
 	}
 	

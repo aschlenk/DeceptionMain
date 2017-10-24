@@ -23,6 +23,13 @@ public class Configuration {
 		obsConfigs = new ArrayList<>();
 	}
 	
+	public Configuration(int id, int utility){
+		this.utility = utility;
+		this.id = id;
+		name = "f"+id;
+		ID++;
+	}
+	
 	public void setObservableConfigurations(ArrayList<ObservableConfiguration> obsConfigs){
 		for(ObservableConfiguration f : obsConfigs){
 			obsConfigs.add(f);

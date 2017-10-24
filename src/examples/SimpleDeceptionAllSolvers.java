@@ -24,41 +24,56 @@ import solvers.UpperBoundMILP;
 public class SimpleDeceptionAllSolvers {
 
 	public static void main(String[] args) throws Exception {
-		DeceptionGame g = new DeceptionGame();
+		
 		// g.generateGame(3, 2, 3);
-		int numConfigs = 15;
-		int numObs = 6;
-		int numSystems = 15;
+		int numConfigs = 50;
+		int numObs = 2;
+		int numSystems = 10;
 		//seed = 101 has some issues in returning the right strategy for numSystems = 5, numObs = 2, and numConfigs = 5
 		//seed = 103 creates a perfect case for when heuristic doesn't run well, numS = 4, numO = 3, numC = 3
 		//seed = 113 creates issues for objective MILP value, numS = 20, numO = 10, numC = 20
 		
 		//whenever all machines can be assigned to same observable, heuristic doesn't work, otherwise it seems to work
-		long seed = 113; 
-		g.generateGame(numConfigs, numObs, numSystems, seed);
-		if (true)
+		
+		//seed 245 (seed 244 if adding 1 before run) with 10 systems, 2 obs, and 50 configs
+		long seed = 245; 
+		for(int i=1; i<=1; i++){
+			DeceptionGame g = new DeceptionGame();
+			seed++;
+			g.generateGame(numConfigs, numObs, numSystems, seed);
 			g.printGame();
-		
-		System.out.println();
-		System.out.println();
 
-		//runSampleLinearGame(g, numConfigs, numObs, numSystems, seed);
-		runSampleGame(g, numConfigs, numObs, numSystems, seed);
-		//runMarginalSolver(g, numConfigs, numObs, numSystems, seed);
-		//runBisectionAlgorithm(g, numConfigs, numObs, numSystems, seed);
-		
-		//runBBSearch(g, numConfigs, numObs, numSystems, seed);
-		//There is an issue with returning a defender strategy when the optimal utility is equal to the lower bound!
-		runBBSigmaSearch(g, numConfigs, numObs, numSystems, seed);
-		
-		
-		System.out.println();
-		System.out.println();
-		//runHeuristicSolver(g);
-		
-		//runGreedyMaxMinSolver(g);
-		//Should write a greedymaxmin solver that works with a general set of constraints
-		//Also should incorporate a partial strategy then greedy max min assigning the rest
+			System.out.println();
+			System.out.println();
+
+			//g.exportGame(1, 1);
+
+			String dir = "C:/Users/Aaron Schlenker/workspace/CyberDeception/";
+
+			// DeceptionGame game2 = new DeceptionGame();
+			// game2.readInGame(dir, 1, 1);
+
+			// game2.printGame();
+
+			// runSampleLinearGame(g, numConfigs, numObs, numSystems, seed);
+			runSampleGame(g, numConfigs, numObs, numSystems, seed);
+			// runMarginalSolver(g, numConfigs, numObs, numSystems, seed);
+			// runBisectionAlgorithm(g, numConfigs, numObs, numSystems, seed);
+
+			// runBBSearch(g, numConfigs, numObs, numSystems, seed);
+			// There is an issue with returning a defender strategy when the
+			// optimal utility is equal to the lower bound!
+			// runBBSigmaSearch(g, numConfigs, numObs, numSystems, seed);
+
+			System.out.println();
+			System.out.println();
+			// runHeuristicSolver(g);
+
+			runGreedyMaxMinSolver(g);
+			// Should write a greedymaxmin solver that works with a general set
+			// of constraints
+			//Also should incorporate a partial strategy then greedy max min assigning the rest
+		}
 		
 	}
 	
@@ -138,10 +153,21 @@ public class SimpleDeceptionAllSolvers {
 	public static void runGreedyMaxMinSolver(DeceptionGame g){
 		System.out.println("Runnning Greedy Max Min Solver");
 		
-		GreedyMaxMinSolver solver = new GreedyMaxMinSolver(g);
-		
-		solver.solve();
-		
+		for(int i=1; i<=40; i++){
+			GreedyMaxMinSolver solver = new GreedyMaxMinSolver(g);
+			
+			solver.setShuffle(true);
+			
+			solver.solve();
+			
+			System.out.println(g.configs.size()+", "+g.obs.size()+", "+g.machines.size()+", "+solver.getDefenderUtility()+","+
+							solver.calculateMaxMinUtility(solver.getGreedyStrategy()).eu+", "+solver.getRuntime());
+			System.out.println();
+			
+			//printCompactStrategy(solver.getGreedyStrategy(), g);
+			
+			//printStrategy2(solver.getGreedyStrategy());
+		}
 		
 	}
 	
@@ -271,7 +297,11 @@ public class SimpleDeceptionAllSolvers {
 		
 		printCompactStrategy(solver.getDefenderStrategy(), g);
 		
-		System.out.println();
+		printStrategy2(solver.getDefenderStrategy());
+
+		solver.deleteVars();
+		
+		//System.out.println();
 		System.out.println();
 	}
 	
@@ -333,6 +363,16 @@ public class SimpleDeceptionAllSolvers {
 	}
 	
 	public static void printStrategy(Map<Systems, Map<ObservableConfiguration, Double>> strat){
+		for(Systems k : strat.keySet()){
+			System.out.print("K"+k.id+": ");
+			for(ObservableConfiguration o : strat.get(k).keySet()){
+				System.out.print("TF"+o.id+" : "+strat.get(k).get(o)+" ");
+			}
+			System.out.println();
+		}
+	}
+	
+	public static void printStrategy2(Map<Systems, Map<ObservableConfiguration, Integer>> strat){
 		for(Systems k : strat.keySet()){
 			System.out.print("K"+k.id+": ");
 			for(ObservableConfiguration o : strat.get(k).keySet()){

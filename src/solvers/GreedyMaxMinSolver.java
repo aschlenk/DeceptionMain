@@ -16,12 +16,18 @@ public class GreedyMaxMinSolver {
 	
 	private double defenderUtility;
 	
+	private double runtime;
+	
+	private boolean shuffle = false;
+	
 	public GreedyMaxMinSolver(DeceptionGame g){
 		game = g;
 		
 	}
 	
 	public void solve(){
+		double start = System.currentTimeMillis();
+		
 		//Calculate the f tildes which have the lowest expected utility
 		euAllObs = calculateEUAllObs(game);
 		for (ObservableConfiguration o : euAllObs.keySet()) {
@@ -45,8 +51,10 @@ public class GreedyMaxMinSolver {
 			machinesLeft.add(k);
 		
 		//Should be sorted now
-		Collections.sort(machinesLeft);
-		//Collections.shuffle(machinesLeft);
+		if(!shuffle)
+			Collections.sort(machinesLeft);
+		else
+			Collections.shuffle(machinesLeft);
 		//System.out.println(machinesLeft);
 
 		//For all k \ in K, assign it to the possible \sigma_k,\tilde{f} s.t. max_\sigma min_{\tilde{f}} Eu(\tilde{f})
@@ -64,6 +72,7 @@ public class GreedyMaxMinSolver {
 		//printStrategy(greedyStrategy);
 		//printExpectedUtility(greedyStrategy);
 		ObservableEU maxminUtil = calculateMaxMinUtility(greedyStrategy);
+		defenderUtility = maxminUtil.eu;
 		//System.out.println(greedyStrategy);
 		
 		
@@ -76,6 +85,8 @@ public class GreedyMaxMinSolver {
 		
 		//Should also do a locally maximize swap from systems covered by an observable to the maxmin abservable
 		//locallyMaximizeSwap();
+		
+		runtime = (System.currentTimeMillis()-start)/1000.0;
 	}
 	
 	public void locallyMaximizeSwap(){
@@ -501,7 +512,7 @@ public class GreedyMaxMinSolver {
 		return obsMin;
 	}
 	
-	private ObservableEU calculateMaxMinUtility(Map<Systems, Map<ObservableConfiguration, Integer>> strategy) {
+	public ObservableEU calculateMaxMinUtility(Map<Systems, Map<ObservableConfiguration, Integer>> strategy) {
 		double maxmin = 0;
 		ObservableConfiguration key = null;
 		
@@ -553,6 +564,7 @@ public class GreedyMaxMinSolver {
 		}
 		System.out.println();
 	}
+	
 	public void printExpectedUtility(Map<Systems, Map<ObservableConfiguration, Integer>> strategy){
 		double expectedU = 0;
 		double total = 0;
@@ -575,6 +587,14 @@ public class GreedyMaxMinSolver {
 	
 	public double getDefenderUtility(){
 		return defenderUtility;
+	}
+	
+	public double getRuntime(){
+		return runtime;
+	}
+	
+	public void setShuffle(boolean shuffle){
+		this.shuffle = shuffle;
 	}
 	
 }

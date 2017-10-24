@@ -20,6 +20,13 @@ public class Systems implements Comparable{
 		id = ID;
 		ID++;
 	}
+	
+	public Systems(int id, Configuration f){
+		this.id = id;
+		name="k"+id;
+		ID++;
+		this.f = f;
+	}
 
 	public void assignObservable(ObservableConfiguration tf){
 		this.tf = tf;
@@ -30,7 +37,7 @@ public class Systems implements Comparable{
 	}
 	
 	public String toString(){
-		return name+" Configuration: "+f.name+" Utility: "+f.utility;
+		return name;//+" Configuration: "+f.name+" Utility: "+f.utility;
 	}
 
 	@Override
