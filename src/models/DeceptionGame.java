@@ -108,9 +108,11 @@ public class DeceptionGame {
 					sum++;
 				}
 			}
+			
 			if(sum == 0){
 				int oNum = r.nextInt(obs.size());//new Random().nextInt(obs.size());
 				obs.get(oNum).addConfiguration(f);
+//				System.out.println("Config "+f.id+" not covered. Assigned obs "+obs.get(oNum).id);
 			}
 			sum = 0;
 		}

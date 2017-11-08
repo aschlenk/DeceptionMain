@@ -11,6 +11,8 @@ public class BisectionAlgorithm {
 	private DeceptionGame game;
 	
 	private Map<ObservableConfiguration, Integer> constraints = null;
+	private Map<ObservableConfiguration, Integer> upperConstraints = null;
+	private Map<ObservableConfiguration, Integer> lowerConstraints = null;
 	private Map<Systems, Map<ObservableConfiguration, Integer>> fixedConstraints = null;
 	
 	private double epsilon = .0001;
@@ -37,6 +39,12 @@ public class BisectionAlgorithm {
 	public BisectionAlgorithm(DeceptionGame g, Map<Systems, Map<ObservableConfiguration, Integer>> constraints, boolean doesntmatter){
 		this.game = g;
 		this.fixedConstraints = constraints;
+	}
+	
+	public BisectionAlgorithm(DeceptionGame g, Map<ObservableConfiguration, Integer> upperConstraints, Map<ObservableConfiguration, Integer> lowerConstraints){
+		this.game = g;
+		this.upperConstraints = upperConstraints;
+		this.lowerConstraints = lowerConstraints;
 	}
 	
 	public void solve() throws Exception{
@@ -83,7 +91,7 @@ public class BisectionAlgorithm {
 		
 		//printCompactStrategy(defenderStrategy);
 		
-		//System.out.println(game.configs.size()+", "+game.obs.size()+", "+game.machines.size()+", "+lb+", "+ub+", "+runtime+", "+iterations);
+//		System.out.println(game.configs.size()+", "+game.obs.size()+", "+game.machines.size()+", "+lb+", "+ub+", "+runtime+", "+iterations);
 		
 	}
 	
@@ -99,6 +107,9 @@ public class BisectionAlgorithm {
 
 		if(fixedConstraints != null)
 			solver = new FeasibilityLP(game, alpha, fixedConstraints, true);
+		
+		if(lowerConstraints != null || upperConstraints != null)
+			solver = new FeasibilityLP(game, alpha, upperConstraints, lowerConstraints);
 		
 		//System.out.println(constraints.toString());
 		

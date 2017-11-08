@@ -42,6 +42,10 @@ public class GameSolver {
 
 	private Map<ObservableConfiguration, Integer> bounds;
 	
+	private double maxRuntime = 0;
+	
+	private boolean cutoff=false;
+	
 	public GameSolver(DeceptionGame g){
 		this.model = g;
 	}
@@ -60,6 +64,10 @@ public class GameSolver {
 		//cplex.setParam(IloCplex.IntParam.RootAlg, IloCplex.Algorithm.Barrier);
 		//cplex.setParam(IloCplex.IntParam.BarCrossAlg, IloCplex.Algorithm.None);
 		//cplex.setParam(IloCplex.IntParam.BarAlg, 0);
+		if(maxRuntime != 0)
+			cplex.setParam(IloCplex.DoubleParam.TiLim, maxRuntime);
+		
+		
 		cplex.setOut(null);
 		
 		initVars();
@@ -96,6 +104,9 @@ public class GameSolver {
 		defenderUtility = getDefenderPayoff();
 		
 		runtime = (System.currentTimeMillis()-start)/1000.0;
+		
+		if(cplex.getCplexTime() > maxRuntime)
+			cutoff = true;
 		
 		//printStrategy(defenderStrategy);
 		//printCompactStrategy(defenderStrategy);
@@ -166,7 +177,7 @@ public class GameSolver {
 		//Need to set z constraints
 		setZConstraints();
 		//Need to set bounds
-		//setObservableBounds();
+		setObservableBounds();
 		//Set 0 value constraints for observables that can't be assigned to a system
 		setZeroConstraints();
 		
@@ -211,15 +222,16 @@ public class GameSolver {
 	}
 	
 	private void setObservableBounds() throws IloException{
-		for(ObservableConfiguration o : bounds.keySet()){
-			IloNumExpr expr = cplex.constant(0.0);
-			
-			for(Systems k : model.machines){
-				expr = cplex.sum(expr, sigmaMap.get(k).get(o));
+		if(bounds != null){
+			for(ObservableConfiguration o : bounds.keySet()){
+				IloNumExpr expr = cplex.constant(0.0);
+				
+				for(Systems k : model.machines){
+					expr = cplex.sum(expr, sigmaMap.get(k).get(o));
+				}
+				constraints.add(cplex.eq(expr, bounds.get(o), "EQUAL_o"+o.id));
 			}
-			constraints.add(cplex.eq(expr, bounds.get(o), "EQUAL_o"+o.id));
 		}
-		
 		
 	}
 
@@ -399,4 +411,11 @@ public class GameSolver {
 		cplex = null;
 	}
 	
+	public void setMaxRuntime(double maxR){
+		maxRuntime = maxR;
+	}
+	
+	public boolean isCutoff(){
+		return cutoff;
+	}
 }

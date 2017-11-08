@@ -13,7 +13,7 @@ import models.Systems;
 
 public class BBSigmaSearch {
 	
-DeceptionGame game;
+	DeceptionGame game;
 	
 	private double globalLB = -1000;
 	
@@ -30,7 +30,7 @@ DeceptionGame game;
 	public void solve() throws Exception{
 		double start = System.currentTimeMillis();
 		
-		warmStart();
+		warmStart(200);
 		
 		//create root node
 		BBSigmaNode root = new BBSigmaNode(game, 0);
@@ -70,8 +70,8 @@ DeceptionGame game;
 			 * New code! Expand all children for a given system k
 			 */
 			//We will use BranchVariable to give us the system to expand on for exploratory nodes
-			for(ObservableConfiguration o : game.obs)
-				createChildNode(searchList, node, var.k, o);
+//			for(ObservableConfiguration o : game.obs)
+//				createChildNode(searchList, node, var.k, o);
 			
 			
 			
@@ -79,7 +79,7 @@ DeceptionGame game;
 			 * Old code for binary expansion
 			 */
 			//Create left and right child where we have n_k,tf <= 0 and n_k,tf >= 1
-			//binaryExpansion(searchList, node, var);
+			binaryExpansion(searchList, node, var);
 			
 
 			//System.out.println();
@@ -93,9 +93,9 @@ DeceptionGame game;
 			if(iterations > 1 && iterations%30==0){
 				System.out.println();
 				System.out.println("Global LB: "+globalLB);
-				printCompactStrategy(optimalStrategy);
-				System.out.println();
-				System.out.println();
+//				printCompactStrategy(optimalStrategy);
+//				System.out.println();
+//				System.out.println();
 				System.out.println(searchList.toString());
 				System.out.println();
 			}
@@ -358,12 +358,14 @@ DeceptionGame game;
 		return newConstraints;
 	}
 
-	private void warmStart(){
+	private void warmStart(int numShuffles){
 		//run Maximin Solver before creating root
 		//Use as global lower bound and the defender strategy
 		//System.out.println("Runnning Greedy Max Min Solver");
 		
 		GreedyMaxMinSolver solver = new GreedyMaxMinSolver(game);
+		
+		solver.setShuffle(false);
 		
 		solver.solve();
 		
@@ -376,6 +378,52 @@ DeceptionGame game;
 			}
 		}
 		optimalStrategy = strat;
+		
+		for(int i=1; i<=numShuffles; i++){
+			GreedyMaxMinSolver solver2 = new GreedyMaxMinSolver(game);
+			
+			solver2.setShuffle(true);
+			
+			solver2.solve();
+			
+			if(solver2.getDefenderUtility() > globalLB){
+				globalLB = solver2.getDefenderUtility();
+				Map<Systems, Map<ObservableConfiguration, Double>> strategy = new HashMap<Systems, Map<ObservableConfiguration, Double>>();
+				for(Systems k : solver2.getGreedyStrategy().keySet()){
+					strat.put(k, new HashMap<ObservableConfiguration, Double>());
+					for(ObservableConfiguration o : solver2.getGreedyStrategy().get(k).keySet()){
+						strat.get(k).put(o, (double)solver2.getGreedyStrategy().get(k).get(o));
+					}
+				}
+				optimalStrategy = strategy;
+				System.out.println("New LB: "+globalLB);
+			}
+			
+//			System.out.println();
+//			
+//			System.out.println(g.configs.size()+", "+g.obs.size()+", "+g.machines.size()+", "+solver.getDefenderUtility()+","+
+//							solver.calculateMaxMinUtility(solver.getGreedyStrategy()).eu+", "+solver.getRuntime());
+//			System.out.println();
+//			
+//			printCompactStrategy(solver.getGreedyStrategy(), g);
+			
+//			printStrategy2(solver.getGreedyStrategy());
+		}
+		
+		
+//		GreedyMaxMinSolver solver = new GreedyMaxMinSolver(game);
+//		
+//		solver.solve();
+//		
+//		globalLB = solver.getDefenderUtility();
+//		Map<Systems, Map<ObservableConfiguration, Double>> strat = new HashMap<Systems, Map<ObservableConfiguration, Double>>();
+//		for(Systems k : solver.getGreedyStrategy().keySet()){
+//			strat.put(k, new HashMap<ObservableConfiguration, Double>());
+//			for(ObservableConfiguration o : solver.getGreedyStrategy().get(k).keySet()){
+//				strat.get(k).put(o, (double)solver.getGreedyStrategy().get(k).get(o));
+//			}
+//		}
+//		optimalStrategy = strat;
 		
 		//System.out.println("Utility: "+globalLB);
 		//System.out.println();

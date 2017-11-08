@@ -39,6 +39,8 @@ public class FeasibilityLP {
 	private double defenderUtility;
 	
 	private Map<ObservableConfiguration, Integer> bounds = null;
+	private Map<ObservableConfiguration, Integer> upperConstraints = null;
+	private Map<ObservableConfiguration, Integer> lowerConstraints = null;
 	private Map<Systems, Map<ObservableConfiguration, Integer>> fixedConstraints = null;
 	
 	private double alpha;
@@ -59,6 +61,13 @@ public class FeasibilityLP {
 		this.model = g;
 		this.alpha = alpha;
 		this.fixedConstraints = constraints;
+	}
+	
+	public FeasibilityLP(DeceptionGame g, double alpha, Map<ObservableConfiguration, Integer> upperConstraints, Map<ObservableConfiguration, Integer> lowerConstraints){
+		this.model = g;
+		this.alpha = alpha;
+		this.upperConstraints = upperConstraints;
+		this.lowerConstraints = lowerConstraints;
 	}
 	
 	private void loadProblem() throws IloException{
@@ -98,8 +107,9 @@ public class FeasibilityLP {
 		}else{
 		//	System.out.println("Problem is Feasible for Alpha: "+alpha);
 		}
-		//writeProblem("FLP.lp");
+//		writeProblem("FLP.lp");
 			
+//		System.out.println(feasible);
 		if(getDefenderStrategy() != null)
 			defenderStrategy = getDefenderStrategy();
 		//defenderUtility = getDefenderPayoff();
@@ -215,6 +225,33 @@ public class FeasibilityLP {
 					}
 				}
 			}
+		}
+		
+		if(upperConstraints != null){
+			for(ObservableConfiguration o : upperConstraints.keySet()){
+				//System.out.println("O"+o.id);
+				IloNumExpr expr = cplex.constant(0.0);
+				
+				for(Systems k : model.machines){
+					expr = cplex.sum(expr, nMap.get(k).get(o));
+				}
+	
+				constraints.add(cplex.le(expr, upperConstraints.get(o), "UBCONSTRAINT_TF_"+o.id));
+			}
+		}
+		
+		if(lowerConstraints != null){
+			for(ObservableConfiguration o : lowerConstraints.keySet()){
+				//System.out.println("O"+o.id);
+				IloNumExpr expr = cplex.constant(0.0);
+				
+				for(Systems k : model.machines){
+					expr = cplex.sum(expr, nMap.get(k).get(o));
+				}
+	
+				constraints.add(cplex.ge(expr, lowerConstraints.get(o), "LBCONSTRAINT_TF_"+o.id));
+			}
+			
 		}
 	}
 	

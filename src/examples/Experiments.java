@@ -12,6 +12,7 @@ import models.DeceptionGame;
 import models.ObservableConfiguration;
 import models.Systems;
 import solvers.GameSolver;
+import solvers.GameSolverCuts;
 import solvers.GreedyMaxMinSolver;
 
 public class Experiments {
@@ -19,19 +20,30 @@ public class Experiments {
 	public static void main(String[] args) throws Exception {
 		
 		//numConfigs, numSystems, numObs, numGames, experimentNum
-		runExperiments(50, 30, 2, 30, 2);
+		//Experiment #2 is regular experiments with several variations to test greedy maxmin
+		//Experiment #4 is with MILP w/ cuts
+		runExperiments(50, 15, 18, 30, 5);
 		
-		}
+		
+	}
 
 	public static void runExperiments(int numConfigs, int numSystems, int numObs, int numgames, int experimentnum)
 			throws Exception {
 
 		createGames(numConfigs, numSystems, numObs, numgames, experimentnum);
 		
-		solveMILP(numConfigs, numSystems, numObs, numgames, experimentnum);
+		double maxRuntime = 1800; //1800 is 15 minutes; 900 = solvertime * #cores
 		
-		solveGreedyMaxMin(numConfigs, numSystems, numObs, numgames, experimentnum);
+		solveMILP(numConfigs, numSystems, numObs, numgames, experimentnum, maxRuntime);
 
+		solveMILPCut(numConfigs, numSystems, numObs, numgames, experimentnum, maxRuntime);
+		
+		int lowNumShuffles = 200; 
+		int highNumShuffles = 200;
+		
+		for(int i=lowNumShuffles; i<=highNumShuffles; i+=20)
+			solveGreedyMaxMin(numConfigs, numSystems, numObs, numgames, experimentnum, i);
+		
 		// String dir = "C:/Users/Aaron Schlenker/workspace/CyberDeception/";
 
 		// DeceptionGame game2 = new DeceptionGame();
@@ -73,7 +85,7 @@ public class Experiments {
 		}
 	}
 
-	public static void solveGreedyMaxMin(int numConfigs, int numSystems, int numObs, int numGames,  int experimentnum) throws IOException {
+	public static void solveGreedyMaxMin(int numConfigs, int numSystems, int numObs, int numGames,  int experimentnum, int numShuffles) throws IOException {
 		System.out.println("Runnning Greedy Max Min Solver");
 
 		String dir = "C:/Users/Aaron Schlenker/workspace/CyberDeception/";
@@ -84,7 +96,7 @@ public class Experiments {
 
 			// game.printGame();
 			
-			runGreedyMaxMin(game, numConfigs, numObs, numSystems, experimentnum, 100);
+			runGreedyMaxMin(game, numConfigs, numObs, numSystems, experimentnum, numShuffles);
 
 //			System.out.println(numConfigs+", "+numObs+", "+numSystems+", "+solver.getDefenderUtility()+", "+solver.getRuntime());
 			
@@ -94,7 +106,7 @@ public class Experiments {
 	
 	private static void runGreedyMaxMin(DeceptionGame game, int numConfigs, int numObservables, int numSystems, int experimentnum, int numShuffles) throws IOException{
 
-		String output = "experiments/GMM_" + experimentnum + "_" + numConfigs + "_" + numObservables + "_" + numSystems
+		String output = "experiments/GMM_" + experimentnum + "_" + numConfigs + "_" + numObservables + "_" + numSystems + "_" + numShuffles
 				+ ".csv";
 
 		PrintWriter w = new PrintWriter(new BufferedWriter(new FileWriter(output, true)));
@@ -131,7 +143,7 @@ public class Experiments {
 		System.out.println();
 	}
 
-	public static void solveMILP(int numConfigs, int numSystems, int numObs, int numgames, int experimentnum) throws Exception {
+	public static void solveMILP(int numConfigs, int numSystems, int numObs, int numgames, int experimentnum, double maxRuntime) throws Exception {
 		String dir = "C:/Users/Aaron Schlenker/workspace/CyberDeception/";
 		
 		for(int i=1; i<=numgames; i++){
@@ -140,13 +152,91 @@ public class Experiments {
 
 			// game.printGame();
 
-			runMILP(game, numConfigs, numObs, numSystems, experimentnum);
+			runMILP(game, numConfigs, numObs, numSystems, experimentnum, maxRuntime);
 
 			System.gc();
 		}
 	}
+	
+	public static void solveMILPCut(int numConfigs, int numSystems, int numObs, int numgames, int experimentnum, double maxRuntime) throws Exception {
+		String dir = "C:/Users/Aaron Schlenker/workspace/CyberDeception/";
+		
+		for(int i=1; i<=numgames; i++){
+			DeceptionGame game = new DeceptionGame();
+			game.readInGame(dir, numConfigs, numObs, numSystems, i, experimentnum);
 
-	public static void runMILP(DeceptionGame g, int numConfigs, int numObservables, int numSystems, int experimentnum)
+			// game.printGame();
+
+			runMILPCut(game, numConfigs, numObs, numSystems, experimentnum, maxRuntime);
+
+			System.gc();
+		}
+	}
+	
+	public static void runMILPCut(DeceptionGame g, int numConfigs, int numObservables, int numSystems, int experimentnum, double maxRuntime)
+			throws Exception {
+		double start = System.currentTimeMillis();
+		
+		double highUtil = -100;
+		
+		for(int i=1; i<=100; i++){
+			GreedyMaxMinSolver solver = new GreedyMaxMinSolver(g);
+			
+			solver.setShuffle(true);
+			
+			solver.solve();
+			
+			if(solver.getDefenderUtility() > highUtil)
+				highUtil = solver.getDefenderUtility();
+			
+		}
+		
+		System.out.println("Running MILP w Cuts");
+		System.out.println();
+		
+		boolean verbose = false;
+
+		// Need to load cplex libraries
+		String cplexInputFile = "CplexConfig";
+
+		DeceptionGameHelper.loadLibrariesCplex(cplexInputFile);
+
+		// Solve the MILP
+		GameSolverCuts solver = new GameSolverCuts(g);
+
+		solver.setGlobalLB(highUtil);
+
+		solver.setMaxSubsetSize(1);
+		
+		solver.setMaxRuntime(maxRuntime);
+		
+		solver.solve();
+
+		String output = "experiments/MILPCut1_" + experimentnum + "_" + numConfigs + "_" + numObservables + "_" + numSystems
+				+ ".csv";
+		
+		PrintWriter w = new PrintWriter(new BufferedWriter(new FileWriter(output, true)));
+
+		double tUB = calculateUB(g);
+
+		System.out.println(numConfigs + ", " + numObservables + ", " + numSystems + ", " + solver.getUtility() + ", "
+				+ solver.getRuntime() + ", " + tUB);
+
+		w.println(numConfigs+", "+numObservables+", "+numSystems+", "+solver.getUtility()+", "+solver.getRuntime());
+		
+		w.close();
+
+		// printCompactStrategy(solver.getDefenderStrategy(), g);
+
+		// printStrategy2(solver.getDefenderStrategy());
+
+		solver.deleteVars();
+
+		// System.out.println();
+		System.out.println();
+	}
+
+	public static void runMILP(DeceptionGame g, int numConfigs, int numObservables, int numSystems, int experimentnum, double maxRuntime)
 			throws Exception {
 		System.out.println("Running MILP");
 		System.out.println();

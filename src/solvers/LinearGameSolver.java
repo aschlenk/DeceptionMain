@@ -87,7 +87,8 @@ public class LinearGameSolver {
 		runtime = (System.currentTimeMillis()-start)/1000.0;
 		
 		//printStrategy(defenderStrategy);
-		printCompactStrategy(defenderStrategy);
+//		printCompactStrategy(defenderStrategy);
+		printCompactStrategy(defenderStrategy, model);
 		printExpectedUtility(defenderStrategy);
 		//riskCategoryCoverage = calculateRiskCategoryCoverage();
 		//defenderPayoffs = getDefenderPayoffs();
@@ -314,6 +315,24 @@ public class LinearGameSolver {
 			}
 			System.out.println();
 		}
+	}
+	
+	public static void printCompactStrategy(Map<Systems, Map<ObservableConfiguration, Double>> strat, DeceptionGame g){
+
+		for(ObservableConfiguration o : g.obs){
+			double sum =0;
+			for(Systems k : strat.keySet()){
+				sum += strat.get(k).get(o);
+			}
+			System.out.println("O"+o.id+": "+sum);
+//			System.out.println();
+			/*for(Systems k : strat.keySet()){
+				if(strat.get(k).get(o) > .999)
+					System.out.print("k"+k.id+" ");
+			}
+			System.out.println();*/
+		}
+		
 	}
 	
 	public double getRuntime(){
