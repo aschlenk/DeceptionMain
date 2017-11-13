@@ -48,7 +48,7 @@ public class Configuration {
 	}
 	
 	public String toString(){
-		return name+" Utility: "+utility;
+		return name;//+" Utility: "+utility;
 	}
 
 }

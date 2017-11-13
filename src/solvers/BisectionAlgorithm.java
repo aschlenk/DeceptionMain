@@ -111,6 +111,8 @@ public class BisectionAlgorithm {
 		if(lowerConstraints != null || upperConstraints != null)
 			solver = new FeasibilityLP(game, alpha, upperConstraints, lowerConstraints);
 		
+		if(constraints == null && fixedConstraints == null && lowerConstraints == null && upperConstraints == null)
+			solver = new FeasibilityLP(game, alpha);
 		//System.out.println(constraints.toString());
 		
 		solver.solve();

@@ -52,6 +52,7 @@ public class GameSolverCuts {
 	private double maxRuntime=0;
 	
 	private boolean cutoff = false;
+	private boolean setCosts = false;
 	
 	public GameSolverCuts(DeceptionGame g){
 		this.model = g;
@@ -198,6 +199,10 @@ public class GameSolverCuts {
 		//Set 0 value constraints for observables that can't be assigned to a system
 		setZeroConstraints();
 		
+		if(setCosts){
+			setBudgetConstraint();
+		}
+		
 		//Need to set constraints for w variables (Only sets of size 1 for right now!)
 		for(int i =1; i<=maxSubsetSize; i++){
 			setWConstraints(i);
@@ -237,74 +242,90 @@ public class GameSolverCuts {
 		
 	}
 	
-	private void setTwoSetConstraints() throws IloException {
-		//For each observable we need to add constraint for all k \in K, where U(k) > LB
-		for(ObservableConfiguration o : model.obs){
-			
-			for(Systems k : model.machines){
-				
-				if(o.configs.contains(k.f)){
-					
-					if(k.f.utility < lowerBound){
-						boolean machineExists = findTwoSetBelowAverage(o,k);
-						ArrayList<Systems> systemsBelowLB = findMachinesBelowLB(o); //Find systems that can lower avg utility <= LB 
-						
-						IloNumExpr expr = cplex.constant(0.0);
-						
-						//It is possible there is not a single other machine which can lower the avg of k and k' >= LB
-						
-						if(systemsBelowLB.size() > 0){
-							for(Systems k1 : systemsBelowLB){
-								expr = cplex.sum(expr, sigmaMap.get(k1).get(o));
-							}
-							
-							if(machineExists) //we know there exists a single machine which can lower the avg below lb
-								expr = cplex.diff(expr, sigmaMap.get(k).get(o)); 
-							else //there does not exist a single machine which can lower avg below lb
-								expr = cplex.diff(expr, cplex.prod(2.0, sigmaMap.get(k).get(o))); 
-							
-							constraints.add(cplex.ge(expr, 0, "AVG_O"+o.id+"_K"+k.id));
-						}
-					}
-				}
-				
-			}
-			
-		}
-		
-	}
-	
-	private boolean findTwoSetBelowAverage(ObservableConfiguration o, Systems k){
-		//ArrayList<Systems> machinesObservable = new ArrayList<Systems>();
-		
-		boolean exists = false;
-		for(Systems k1 : model.machines){
-			if(o.configs.contains(k1.f)){
-				double average = (k.f.utility + k1.f.utility)/2.0;
-				if(average >= lowerBound){
-					exists = true;
-					//machinesObservable.add(k1);
-				}
-			}
-		}
-		
-		return exists;
-		//return machinesObservable;
-	}
-	
-	private ArrayList<Systems> findMachinesBelowLB(ObservableConfiguration o){
-		ArrayList<Systems> machinesObservable = new ArrayList<Systems>();
-		
+	private void setBudgetConstraint() throws IloException{
+
+		IloNumExpr expr = cplex.constant(0.0);
 		for(Systems k : model.machines){
-			if(o.configs.contains(k.f)){
-				if(k.f.utility >= lowerBound){
-					machinesObservable.add(k);
+			for(ObservableConfiguration o : model.obs){
+				
+				if(o.configs.contains(k.f)){ //If we can cover it add the value to the budget constraint
+					expr = cplex.sum(expr, cplex.prod(model.costFunction.get(k.f).get(o), sigmaMap.get(k).get(o)));
 				}
-			}
+			}	
 		}
 		
-		return machinesObservable;
+		constraints.add(cplex.le(expr, model.Budget, "BUDGET_CONST"));
+		
 	}
+	
+//	private void setTwoSetConstraints() throws IloException {
+//		//For each observable we need to add constraint for all k \in K, where U(k) > LB
+//		for(ObservableConfiguration o : model.obs){
+//			
+//			for(Systems k : model.machines){
+//				
+//				if(o.configs.contains(k.f)){
+//					
+//					if(k.f.utility < lowerBound){
+//						boolean machineExists = findTwoSetBelowAverage(o,k);
+//						ArrayList<Systems> systemsBelowLB = findMachinesBelowLB(o); //Find systems that can lower avg utility <= LB 
+//						
+//						IloNumExpr expr = cplex.constant(0.0);
+//						
+//						//It is possible there is not a single other machine which can lower the avg of k and k' >= LB
+//						
+//						if(systemsBelowLB.size() > 0){
+//							for(Systems k1 : systemsBelowLB){
+//								expr = cplex.sum(expr, sigmaMap.get(k1).get(o));
+//							}
+//							
+//							if(machineExists) //we know there exists a single machine which can lower the avg below lb
+//								expr = cplex.diff(expr, sigmaMap.get(k).get(o)); 
+//							else //there does not exist a single machine which can lower avg below lb
+//								expr = cplex.diff(expr, cplex.prod(2.0, sigmaMap.get(k).get(o))); 
+//							
+//							constraints.add(cplex.ge(expr, 0, "AVG_O"+o.id+"_K"+k.id));
+//						}
+//					}
+//				}
+//				
+//			}
+//			
+//		}
+//		
+//	}
+	
+//	private boolean findTwoSetBelowAverage(ObservableConfiguration o, Systems k){
+//		//ArrayList<Systems> machinesObservable = new ArrayList<Systems>();
+//		
+//		boolean exists = false;
+//		for(Systems k1 : model.machines){
+//			if(o.configs.contains(k1.f)){
+//				double average = (k.f.utility + k1.f.utility)/2.0;
+//				if(average >= lowerBound){
+//					exists = true;
+//					//machinesObservable.add(k1);
+//				}
+//			}
+//		}
+//		
+//		return exists;
+//		//return machinesObservable;
+//	}
+	
+//	private ArrayList<Systems> findMachinesBelowLB(ObservableConfiguration o){
+//		ArrayList<Systems> machinesObservable = new ArrayList<Systems>();
+//		
+//		for(Systems k : model.machines){
+//			if(o.configs.contains(k.f)){
+//				if(k.f.utility >= lowerBound){
+//					machinesObservable.add(k);
+//				}
+//			}
+//		}
+//		
+//		return machinesObservable;
+//	}
 	
 	//TODO: Need to make sure these constraints now initialize for a subset of size l
 	private void setWConstraints(int l) throws IloException {
@@ -822,4 +843,8 @@ public class GameSolverCuts {
 		return cutoff;
 	}
 	
+
+	public void setCosts(boolean setIt){
+		setCosts = setIt;
+	}
 }

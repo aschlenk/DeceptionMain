@@ -45,6 +45,7 @@ public class GameSolver {
 	private double maxRuntime = 0;
 	
 	private boolean cutoff=false;
+	private boolean setCosts = false;
 	
 	public GameSolver(DeceptionGame g){
 		this.model = g;
@@ -181,6 +182,10 @@ public class GameSolver {
 		//Set 0 value constraints for observables that can't be assigned to a system
 		setZeroConstraints();
 		
+		if(setCosts){
+			setBudgetConstraint();
+		}
+		
 		IloRange[] c = new IloRange[constraints.size()];
 
 		cplex.add(constraints.toArray(c));
@@ -204,6 +209,22 @@ public class GameSolver {
 			
 			constraints.add(cplex.le(expr, 0.0, "UTILITY_TF_"+o.id));
 		}
+		
+	}
+	
+	private void setBudgetConstraint() throws IloException{
+
+		IloNumExpr expr = cplex.constant(0.0);
+		for(Systems k : model.machines){
+			for(ObservableConfiguration o : model.obs){
+				
+				if(o.configs.contains(k.f)){ //If we can cover it add the value to the budget constraint
+					expr = cplex.sum(expr, cplex.prod(model.costFunction.get(k.f).get(o), sigmaMap.get(k).get(o)));
+				}
+			}	
+		}
+		
+		constraints.add(cplex.le(expr, model.Budget, "BUDGET_CONST"));
 		
 	}
 
@@ -398,6 +419,44 @@ public class GameSolver {
 		
 	}
 	
+	public static double calculateExpectedUtility(DeceptionGame game, Map<Systems, Map<ObservableConfiguration, Integer>> strategy){
+		double expectedU = 0;
+		double total = 0;
+		double minUtil = 0;
+		for(ObservableConfiguration o : game.obs){
+			for(Systems k : strategy.keySet()){
+				expectedU += strategy.get(k).get(o)*k.f.utility;
+				total += strategy.get(k).get(o);
+			}
+//			System.out.println("EU(o"+o.id+"): "+(expectedU/total));
+			if((expectedU/total) < minUtil){
+				minUtil = (expectedU/total);
+			}
+			expectedU = 0;
+			total=0;
+		}
+		return minUtil;
+	}
+	
+	public static double calculateExpectedUtility1(DeceptionGame game, Map<Systems, Map<ObservableConfiguration, Double>> strategy){
+		double expectedU = 0;
+		double total = 0;
+		double minUtil = 0;
+		for(ObservableConfiguration o : game.obs){
+			for(Systems k : strategy.keySet()){
+				expectedU += strategy.get(k).get(o)*k.f.utility;
+				total += strategy.get(k).get(o);
+			}
+//			System.out.println("EU(o"+o.id+"): "+(expectedU/total));
+			if((expectedU/total) < minUtil){
+				minUtil = (expectedU/total);
+			}
+			expectedU = 0;
+			total=0;
+		}
+		return minUtil;
+	}
+	
 	public void deleteVars() throws IloException{
 		sigmaMap.clear();
 		zMap.clear();
@@ -417,5 +476,9 @@ public class GameSolver {
 	
 	public boolean isCutoff(){
 		return cutoff;
+	}
+	
+	public void setCosts(boolean setIt){
+		setCosts = setIt;
 	}
 }
