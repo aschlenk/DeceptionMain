@@ -43,6 +43,8 @@ public class FeasibilityLP {
 	private Map<ObservableConfiguration, Integer> lowerConstraints = null;
 	private Map<Systems, Map<ObservableConfiguration, Integer>> fixedConstraints = null;
 	
+	private Map<Systems, ObservableConfiguration> setMaskings = null;
+	
 	private double alpha;
 	private boolean feasible = true;
 	
@@ -50,12 +52,18 @@ public class FeasibilityLP {
 		this.model = g;
 		this.alpha = alpha;
 	}
-
-	public FeasibilityLP(DeceptionGame g, double alpha, Map<ObservableConfiguration, Integer> bounds){
+	
+	public FeasibilityLP(DeceptionGame g, double alpha, Map<Systems, ObservableConfiguration> setMaskings){
 		this.model = g;
 		this.alpha = alpha;
-		this.bounds = bounds;
+		this.setMaskings = setMaskings;
 	}
+		
+//	public FeasibilityLP(DeceptionGame g, double alpha, Map<ObservableConfiguration, Integer> bounds){
+//		this.model = g;
+//		this.alpha = alpha;
+//		this.bounds = bounds;
+//	}
 	
 	public FeasibilityLP(DeceptionGame g, double alpha, Map<Systems, Map<ObservableConfiguration, Integer>> constraints, boolean doesntmatter){
 		this.model = g;
@@ -154,6 +162,7 @@ public class FeasibilityLP {
 		
 		//Need to add utility constraints
 		setUtilityConstraints();
+		
 		//Need to set single observable per system constraint
 		sumObservableConfigurationRow();
 		
@@ -165,6 +174,12 @@ public class FeasibilityLP {
 		
 		//Set 0 value constraints for observables that can't be assigned to a system
 		setZeroConstraints();
+		
+		//set strategy Constraints if they have anything in them
+		setStrategyFixedMaskings();
+		
+		if(true)//setting budget constraint; needs to be changed if not supposed to have budget
+			setBudgetConstraint();
 		
 		IloRange[] c = new IloRange[constraints.size()];
 
@@ -193,6 +208,44 @@ public class FeasibilityLP {
 			
 			
 			constraints.add(cplex.le(expr, 0.0, "UTILITY_TF_"+o.id));
+		}
+		
+	}
+	
+	private void setBudgetConstraint() throws IloException{
+
+		IloNumExpr expr = cplex.constant(0.0);
+		for(Systems k : model.machines){
+			for(ObservableConfiguration o : model.obs){
+				
+				if(o.configs.contains(k.f)){ //If we can cover it add the value to the budget constraint
+					expr = cplex.sum(expr, cplex.prod(model.costFunction.get(k.f).get(o), nMap.get(k).get(o)));
+				}
+			}	
+		}
+		
+		constraints.add(cplex.le(expr, model.Budget, "BUDGET_CONST"));
+		
+	}
+	
+	private void setStrategyFixedMaskings() throws IloException{
+		
+		if(setMaskings != null){
+			for(Systems k : setMaskings.keySet()){
+				for(ObservableConfiguration o : model.obs){	
+//					System.out.println("Setting K"+k.id+" O"+o.id);
+					if(setMaskings.get(k).id == o.id){
+						IloNumExpr expr = nMap.get(k).get(o);
+						
+						constraints.add(cplex.eq(expr, 1.0, "ST_CONS_K"+k.id+"_O"+o.id));
+					}else{
+						IloNumExpr expr = nMap.get(k).get(o);
+						
+						constraints.add(cplex.eq(expr, 0.0, "ST_CONS_K"+k.id+"_O"+o.id));
+					}
+				}
+				
+			}
 		}
 		
 	}
@@ -404,6 +457,10 @@ public class FeasibilityLP {
 		//cplex.clearModel();
 		
 		cplex = null;
+	}
+	
+	public Map<Systems, ObservableConfiguration> getStrategyFixedMaskings(){
+		return setMaskings;
 	}
 	
 }

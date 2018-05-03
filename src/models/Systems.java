@@ -39,7 +39,7 @@ public class Systems implements Comparable{
 	}
 	
 	public String toString(){
-		return name;//+" Configuration: "+f.name+" Utility: "+f.utility;
+		return name+" Configuration: "+f.name+" Utility: "+f.utility;
 	}
 
 	@Override

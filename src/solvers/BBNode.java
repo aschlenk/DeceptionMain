@@ -56,7 +56,7 @@ public class BBNode implements Comparable {
 	
 	public void solve() throws Exception{
 		if(!isLeaf){
-			BisectionAlgorithm alg = new BisectionAlgorithm(game, constraints);
+			BisectionAlgorithm alg = new BisectionAlgorithm(game);//, constraints);
 			
 			alg.solve();
 			

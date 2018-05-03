@@ -27,7 +27,9 @@ public class Experiments {
 		//numConfigs, numSystems, numObs, numGames, experimentNum
 		//Experiment #2 is regular experiments with several variations to test greedy maxmin
 		//Experiment #4 is with MILP w/ cuts
-		runExperiments(50, 20, 10, 30, 7);
+		//Experiment #8: Comparison of how often greedy maximin returns optimal solution: 10 and 20 systems varying OCs 2, 4, 6, 8, 10
+//		for(int i=20; i<=20; i+=2)
+			runExperiments(20, 20, 20, 30, 22);
 		
 		
 	}
@@ -39,16 +41,19 @@ public class Experiments {
 		
 		double maxRuntime = 1800; //1800 is 15 minutes; 900 = solvertime * #cores
 		
-		solveMILP(numConfigs, numSystems, numObs, numgames, experimentnum, maxRuntime, true);
-
-		solveMILPCut(numConfigs, numSystems, numObs, numgames, experimentnum, maxRuntime, true);
+//		solveMILP(numConfigs, numSystems, numObs, numgames, experimentnum, maxRuntime, true);
 		
-//		int lowNumShuffles = 400; 
-		int highNumShuffles = 500;
+//		solveMILPCut(numConfigs, numSystems, numObs, numgames, experimentnum, maxRuntime, true);
 		
-//		for(int i=lowNumShuffles; i<=highNumShuffles; i+=20)
-			solveGreedyMaxMin(numConfigs, numSystems, numObs, numgames, experimentnum, highNumShuffles, false, true);
-			solveGreedyMaxMin(numConfigs, numSystems, numObs, numgames, experimentnum, highNumShuffles, false, false);
+		int lowNumShuffles = 4000; 
+		int highNumShuffles = 4000;
+		
+		double lambda = .1;
+		
+		for(int i=lowNumShuffles; i<=highNumShuffles; i+=500){
+//			solveGreedyMaxMin(numConfigs, numSystems, numObs, numgames, experimentnum, highNumShuffles, false, true, lambda);
+//			solveGreedyMaxMin(numConfigs, numSystems, numObs, numgames, experimentnum, i, false, false, lambda);
+		}
 		
 //		solveUniformEstimation(numConfigs, numSystems, numObs, numgames, experimentnum);
 		
@@ -342,7 +347,7 @@ public class Experiments {
 	
 
 	private static void solveGreedyMaxMin(int numConfigs, int numSystems, int numObs, int numGames,  int experimentnum, int numShuffles, 
-			boolean allPermutations, boolean fixedCosts) throws IOException {
+			boolean allPermutations, boolean fixedCosts, double lambda) throws IOException {
 		System.out.println("Runnning Greedy Max Min Solver");
 
 		String dir = "C:/Users/Aaron Schlenker/workspace/CyberDeception/";
@@ -353,9 +358,9 @@ public class Experiments {
 
 			// game.printGame();
 			if(!allPermutations)
-				runGreedyMaxMin(game, numConfigs, numObs, numSystems, experimentnum, numShuffles, fixedCosts);
+				runGreedyMaxMin(game, numConfigs, numObs, numSystems, experimentnum, numShuffles, fixedCosts, lambda);
 			else
-				runGreedyMaxMinAllPermutations(game, numConfigs, numObs, numSystems, experimentnum, numShuffles);
+				runGreedyMaxMinAllPermutations(game, numConfigs, numObs, numSystems, experimentnum, numShuffles, fixedCosts, lambda);
 			
 //			System.out.println(numConfigs+", "+numObs+", "+numSystems+", "+solver.getDefenderUtility()+", "+solver.getRuntime());
 			
@@ -363,10 +368,11 @@ public class Experiments {
 		}
 	}
 	
-	private static void runGreedyMaxMin(DeceptionGame game, int numConfigs, int numObservables, int numSystems, int experimentnum, int numShuffles, boolean fixedCosts) throws IOException{
+	private static void runGreedyMaxMin(DeceptionGame game, int numConfigs, int numObservables, int numSystems, int experimentnum, int numShuffles, 
+			boolean fixedCosts, double lambda) throws IOException{
 
 		String output = "experiments/GMM_" + experimentnum + "_" + numConfigs + "_" + numObservables + "_" + numSystems + "_" + numShuffles+"_"+fixedCosts
-				+ ".csv";
+				+"_"+lambda+ ".csv";
 
 		PrintWriter w = new PrintWriter(new BufferedWriter(new FileWriter(output, true)));
 
@@ -388,7 +394,7 @@ public class Experiments {
 			if(fixedCosts)
 				solver.solveHardGMM();
 			else
-				solver.solveSoftGMM();
+				solver.solveSoftGMM(lambda);
 			
 			//solver.solve();
 			
@@ -410,10 +416,11 @@ public class Experiments {
 		System.out.println();
 	}
 	
-	private static void runGreedyMaxMinAllPermutations(DeceptionGame game, int numConfigs, int numObservables, int numSystems, int experimentnum, int numShuffles) throws IOException{
+	private static void runGreedyMaxMinAllPermutations(DeceptionGame game, int numConfigs, int numObservables, int numSystems, int experimentnum, 
+			int numShuffles, boolean fixedCosts, double lambda) throws IOException{
 
 		String output = "experiments/GMMAP_" + experimentnum + "_" + numConfigs + "_" + numObservables + "_" + numSystems + "_" + numShuffles
-				+ ".csv";
+				+"_"+fixedCosts+"_"+lambda+ ".csv";
 
 		PrintWriter w = new PrintWriter(new BufferedWriter(new FileWriter(output, true)));
 
@@ -432,17 +439,22 @@ public class Experiments {
 		
 		for(int i=0; i<allPermutations.size(); i++){
 
-			GreedyMaxMinSolver solver = new GreedyMaxMinSolver(game);
-
-			solver.setFixedOrdering(allPermutations.get(i));
-			//solver.setShuffle(true);
-			solver.setRandomIndifferent();
-			
-			solver.solve();
-			
-			if(solver.getDefenderUtility() > bestUtil)
-				bestUtil = solver.getDefenderUtility();
-			
+			for(int j=0; j<4; j++){ //run each permutation a few times
+				GreedyMaxMinSolver solver = new GreedyMaxMinSolver(game);
+	
+				solver.setFixedOrdering(allPermutations.get(i));
+				//solver.setShuffle(true);
+				solver.setRandomIndifferent();
+				
+				if(fixedCosts)
+					solver.solveHardGMM();
+				else
+					solver.solveSoftGMM(lambda);
+	//				solver.solve();
+				
+				if(solver.getDefenderUtility() > bestUtil)
+					bestUtil = solver.getDefenderUtility();
+			}
 		}
 		
 		double runtime = (System.currentTimeMillis()-start)/1000.0;
@@ -493,6 +505,8 @@ public class Experiments {
 
 			runMILP(game, numConfigs, numObs, numSystems, experimentnum, maxRuntime, costs);
 
+			Thread.sleep(100);
+			
 			System.gc();
 		}
 	}
@@ -512,6 +526,8 @@ public class Experiments {
 
 			runMILPCut(game, numConfigs, numObs, numSystems, experimentnum, maxRuntime, costs);
 
+			Thread.sleep(100);
+			
 			System.gc();
 		}
 	}

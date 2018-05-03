@@ -1,0 +1,4 @@
+Configurations = input/experiment100/configurations/Configurations_20_10_16_9_100.csv
+Observables = input/experiment100/observables/Observables_20_10_16_9_100.csv
+Systems = input/experiment100/systems/Systems_20_10_16_9_100.csv
+Costs = input/experiment100/costs/Costs_20_10_16_9_100.csv

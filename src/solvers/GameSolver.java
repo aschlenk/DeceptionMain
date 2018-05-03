@@ -46,6 +46,7 @@ public class GameSolver {
 	
 	private boolean cutoff=false;
 	private boolean setCosts = false;
+	private double milpGap = 0;
 	
 	public GameSolver(DeceptionGame g){
 		this.model = g;
@@ -54,26 +55,6 @@ public class GameSolver {
 	public GameSolver(DeceptionGame g, Map<ObservableConfiguration, Integer> bounds){
 		this.model = g;
 		this.bounds = bounds;
-	}
-	
-	private void loadProblem() throws IloException{
-		sigmaMap = new HashMap<Systems, Map<ObservableConfiguration, IloNumVar>>();
-		zMap = new HashMap<Systems, Map<ObservableConfiguration, IloNumVar>>();
-		
-		cplex = new IloCplex();
-		cplex.setName("DECEPTION");
-		//cplex.setParam(IloCplex.IntParam.RootAlg, IloCplex.Algorithm.Barrier);
-		//cplex.setParam(IloCplex.IntParam.BarCrossAlg, IloCplex.Algorithm.None);
-		//cplex.setParam(IloCplex.IntParam.BarAlg, 0);
-		if(maxRuntime != 0)
-			cplex.setParam(IloCplex.DoubleParam.TiLim, maxRuntime);
-		
-		
-		cplex.setOut(null);
-		
-		initVars();
-		initConstraints();
-		initObjective();
 	}
 	
 	public void solve() throws Exception{
@@ -124,6 +105,31 @@ public class GameSolver {
 		//System.out.println("Runtime: "+runtime);
 		
 	}
+	
+
+	private void loadProblem() throws IloException{
+		sigmaMap = new HashMap<Systems, Map<ObservableConfiguration, IloNumVar>>();
+		zMap = new HashMap<Systems, Map<ObservableConfiguration, IloNumVar>>();
+		
+		cplex = new IloCplex();
+		cplex.setName("DECEPTION");
+		//cplex.setParam(IloCplex.IntParam.RootAlg, IloCplex.Algorithm.Barrier);
+		//cplex.setParam(IloCplex.IntParam.BarCrossAlg, IloCplex.Algorithm.None);
+		//cplex.setParam(IloCplex.IntParam.BarAlg, 0);
+		if(maxRuntime != 0)
+			cplex.setParam(IloCplex.DoubleParam.TiLim, maxRuntime);
+		
+		if(milpGap > 0)
+			cplex.setParam(IloCplex.DoubleParam.EpGap, milpGap);
+		
+//		cplex.setParam(IloCplex.IntParam.MIPInterval, 10);
+//		cplex.setParam(IloCplex.IntParam.MIPDisplay, 2);
+		cplex.setOut(null);
+		
+		initVars();
+		initConstraints();
+		initObjective();
+	}
 
 	private void initVars() throws IloException{
 		List<IloNumVar> varList = new ArrayList<IloNumVar>();
@@ -159,7 +165,10 @@ public class GameSolver {
 			}
 		}
 		
-		dutility = cplex.numVar(minUtility, 0, IloNumVarType.Float, "d");
+		double tUB = calculateUB(model);
+		
+//		dutility = cplex.numVar(minUtility, 0, IloNumVarType.Float, "d");
+		dutility = cplex.numVar(minUtility, tUB, IloNumVarType.Float, "d");
 		
 		varList.add(dutility);
 		
@@ -457,6 +466,14 @@ public class GameSolver {
 		return minUtil;
 	}
 	
+	public static double calculateUB(DeceptionGame g){
+		int totalU = 0;
+		for(Systems k : g.machines){
+			totalU += k.f.utility;
+		}
+		return ((double)(totalU)/(double)g.machines.size());
+	}
+	
 	public void deleteVars() throws IloException{
 		sigmaMap.clear();
 		zMap.clear();
@@ -480,5 +497,9 @@ public class GameSolver {
 	
 	public void setCosts(boolean setIt){
 		setCosts = setIt;
+	}
+	
+	public void setMilpGap(double gap){
+		this.milpGap = gap;
 	}
 }

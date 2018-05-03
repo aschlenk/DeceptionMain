@@ -20,7 +20,7 @@ public class Configuration {
 		id = ID;
 		ID++;
 		observables = new HashSet<ObservableConfiguration>();
-		obsConfigs = new ArrayList<>();
+//		obsConfigs = new ArrayList<>();
 	}
 	
 	public Configuration(int id, int utility){

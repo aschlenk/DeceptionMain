@@ -144,10 +144,14 @@ public class DeceptionGame {
 			}
 			totalMaxCost += maxCost;
 		}
-		System.out.println("Min Cost: "+totalMinCost);
-		System.out.println("Min Cost: "+totalMaxCost);
+//		System.out.println("Min Cost: "+totalMinCost);
+//		System.out.println("Max Cost: "+totalMaxCost);
 		int size = (int)(numSystems/4);
-		int value = r.nextInt(totalMaxCost-totalMinCost);
+		int value;
+		if(totalMaxCost-totalMinCost == 0)
+			value = 0;
+		else
+			value = r.nextInt(totalMaxCost-totalMinCost);
 		Budget = totalMinCost+value;
 		
 		

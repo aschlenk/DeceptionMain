@@ -53,6 +53,7 @@ public class GameSolverCuts {
 	
 	private boolean cutoff = false;
 	private boolean setCosts = false;
+	private double milpGap = 0;
 	
 	public GameSolverCuts(DeceptionGame g){
 		this.model = g;
@@ -71,13 +72,17 @@ public class GameSolverCuts {
 		
 		cplex = new IloCplex();
 		cplex.setName("DECEPTION");
-		//cplex.setParam(IloCplex.IntParam.RootAlg, IloCplex.Algorithm.Barrier);
+//		cplex.setParam(IloCplex.IntParam.RootAlg, IloCplex.Algorithm.Barrier);
 		//cplex.setParam(IloCplex.IntParam.BarCrossAlg, IloCplex.Algorithm.None);
 		//cplex.setParam(IloCplex.IntParam.BarAlg, 0);
 		if(maxRuntime != 0)
 			cplex.setParam(IloCplex.DoubleParam.TiLim, maxRuntime);
-		
-		
+
+		if(milpGap > 0)
+			cplex.setParam(IloCplex.DoubleParam.EpGap, milpGap);
+
+//		cplex.setParam(IloCplex.IntParam.MIPInterval, 10);
+//		cplex.setParam(IloCplex.IntParam.MIPDisplay, 2);
 		cplex.setOut(null);
 		
 		initVars();
@@ -117,6 +122,7 @@ public class GameSolverCuts {
 		
 		if(cplex.getCplexTime() > maxRuntime)
 			cutoff = true;
+		
 		
 		//printStrategy(defenderStrategy);
 		//printCompactStrategy(defenderStrategy);
@@ -176,7 +182,10 @@ public class GameSolverCuts {
 			}
 		}
 		
-		dutility = cplex.numVar(minUtility, 0, IloNumVarType.Float, "d");
+		double tUB = calculateUB(model);
+		
+//		dutility = cplex.numVar(minUtility, 0, IloNumVarType.Float, "d");
+		dutility = cplex.numVar(minUtility, tUB, IloNumVarType.Float, "d");
 		
 		varList.add(dutility);
 		
@@ -798,6 +807,14 @@ public class GameSolverCuts {
 		return defenderUtility;
 	}
 	
+	public static double calculateUB(DeceptionGame g){
+		int totalU = 0;
+		for(Systems k : g.machines){
+			totalU += k.f.utility;
+		}
+		return ((double)(totalU)/(double)g.machines.size());
+	}
+	
 	public void printExpectedUtility(Map<Systems, Map<ObservableConfiguration, Integer>> strategy){
 		double expectedU = 0;
 		double total = 0;;
@@ -846,5 +863,9 @@ public class GameSolverCuts {
 
 	public void setCosts(boolean setIt){
 		setCosts = setIt;
+	}
+
+	public void setMilpGap(double gap){
+		this.milpGap = gap;
 	}
 }

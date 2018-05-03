@@ -27,6 +27,8 @@ public class GreedyMaxMinSolver {
 	
 	private boolean randomIndifferent = false;
 	
+	private double maxRuntime = 0;
+	
 	public GreedyMaxMinSolver(DeceptionGame g){
 		game = g;
 	}
@@ -111,6 +113,7 @@ public class GreedyMaxMinSolver {
 	}
 	
 	public void solveHardGMM(){
+//		System.out.println("Solving Hard-GMM");
 		//Solving this thing with costs!
 		double start = System.currentTimeMillis();
 		
@@ -164,6 +167,9 @@ public class GreedyMaxMinSolver {
 			
 			rBudget -= maxminConfig.cost;
 			
+			if(rBudget < 0)
+				System.out.println("BIG ERROR, BAD BUDGET CALCULATION");
+			
 			greedyStrategy.get(k).put(maxminConfig.o, greedyStrategy.get(k).get(maxminConfig.o)+1);
 			
 			//System.out.println("Best to assign k"+k.id+" to be covered by "+maxminConfig.id);
@@ -179,7 +185,7 @@ public class GreedyMaxMinSolver {
 		runtime = (System.currentTimeMillis()-start)/1000.0;
 	}
 	
-	public void solveSoftGMM(){
+	public void solveSoftGMM(double lambda){
 		//Solving this thing with costs!
 		double start = System.currentTimeMillis();
 		
@@ -218,7 +224,7 @@ public class GreedyMaxMinSolver {
 			Systems k = machinesLeft.remove(0);
 //			System.out.println("Assigning k"+k.id);
 
-			ObservableEU maxminConfig = assignMachineMaxMinSoft(greedyStrategy, k, rBudget); //This should solve for best Observable to add given it still admits feasible solution
+			ObservableEU maxminConfig = assignMachineMaxMinSoft(greedyStrategy, k, rBudget, lambda); //This should solve for best Observable to add given it still admits feasible solution
 //			ObservableEU maxminConfig = assignMachineMaxMinCost(greedyStrategy, k);
 			
 //			System.out.println("Observable "+maxminConfig.o.id+"  EU: "+maxminConfig.eu);
@@ -432,7 +438,7 @@ public class GreedyMaxMinSolver {
 		//return key;
 	}
 	
-	private ObservableEU assignMachineMaxMinSoft(Map<Systems, Map<ObservableConfiguration, Integer>> greedyStrategy, Systems k, int rBudget){
+	private ObservableEU assignMachineMaxMinSoft(Map<Systems, Map<ObservableConfiguration, Integer>> greedyStrategy, Systems k, int rBudget, double lambda){
 		ObservableConfiguration key = null;
 		double maxmin = -1000;
 		
@@ -452,44 +458,16 @@ public class GreedyMaxMinSolver {
 			greedyStrategy.get(k).put(game.obs.get(i), greedyStrategy.get(k).get(game.obs.get(i))+1);
 			ObservableEU o1 = calculateMinObservable(greedyStrategy); //calculates the minimax value
 			greedyStrategy.get(k).put(game.obs.get(i), greedyStrategy.get(k).get(game.obs.get(i))-1);
-			
-			
-			/*if(o1.eu > maxmin && key == null){
-				if((rBudget-game.costFunction.get(k.f).get(game.obs.get(i))) > minBudgetRequired){
-					maxmin = o1.eu;
-					key = game.obs.get(i);
-				}
-			}else if(o1.eu > maxmin){// && euAllObs.get(key) < euAllObs.get(game.obs.get(i))){  //key is not null here
-				if((rBudget-game.costFunction.get(k.f).get(game.obs.get(i))) > minBudgetRequired){
-					// have to do >= bc better observable may be available
-					maxmin = o1.eu;
-					key = game.obs.get(i);
-				}
-			} else {
-				// Calculate the f tildes which have the lowest expected utility
-				// Need to calculate this on the fly
-				euAllObs = calculateEUAllObs(game, greedyStrategy); //this would calculate the wrong value now!
-				//
-				if (o1.eu == maxmin && euAllObs.get(key) < euAllObs.get(game.obs.get(i))) {
-					if((rBudget-game.costFunction.get(k.f).get(game.obs.get(i))) > minBudgetRequired){
-						maxmin = o1.eu;
-						key = game.obs.get(i);
-					}
-				}
-			}*/
-			
+						
 //			System.out.println("rBudget: "+rBudget+" Cost: "+game.costFunction.get(k.f).get(game.obs.get(i)));
 			if((rBudget-game.costFunction.get(k.f).get(game.obs.get(i))) > minBudgetRequired){
 				observableUtilities.add(new ObservableEU(game.obs.get(i), o1.eu, game.costFunction.get(k.f).get(game.obs.get(i))));
-//				System.out.println("Adding: "+game.obs.get(i).id);
 			}
 			
-			//System.out.println();
 		}
 		
 		//Need to create two separate orderings for ObservedUtilities array
 		//Sample with probability according to weight from two lists
-		
 		
 		//Ordered list of observables by utility
 		ArrayList<ObservableEU> utilities = new ArrayList<ObservableEU>();
@@ -502,54 +480,28 @@ public class GreedyMaxMinSolver {
 		Collections.sort(utilities);
 //		System.out.println(utilities.toString());
 		
-		//Ordered list of observables by cost
-		ArrayList<ObservableEU> costs = new ArrayList<ObservableEU>();
-		for(ObservableEU oeu : observableUtilities)
-			costs.add(oeu);
-		
-		Collections.sort(costs, ObservableEU.costAscending);
-//		System.out.println(costs.toString());
-		
-		//Do probabilistic sampling of system and observable configuration
-		//Weight given to each one, 1..n for highest utility u * 1..m for lowest cost c = \tau
-		Map<ObservableConfiguration, Double> weights = new HashMap<ObservableConfiguration, Double>();
-		
-		int index = 0;
-		for(ObservableEU oe : utilities){
-			index++;
-			int index2 = 0;
-			for(ObservableEU oe1 : costs){
-				index2++;
-				if(oe.o.id == oe1.o.id){
-					weights.put(oe.o, (double)index*index2);
-				}
-			}
-		}
-		
-		//Normalize 1/w / \sum w
-		for(ObservableConfiguration o : weights.keySet()){
-			double value = (1/(double)weights.get(o));
-			weights.put(o, value);
-		}
-		double sum = 0;
-		for(ObservableConfiguration o : weights.keySet()){
-			sum += weights.get(o);
-		}
-//		System.out.println(sum);
-
-		Map<ObservableConfiguration, Double> weights1 = new HashMap<ObservableConfiguration, Double>();
-		
+		//Do probabilistic sampling of system and observable configuration		
 		ArrayList<ObservableEU> weightsNormalized = new ArrayList<ObservableEU>();
+		for(ObservableEU oe : utilities){
+			//e^(-lambda e ^ u_i)
+			double value = Math.pow(Math.E, -lambda*(-1*oe.eu));//*Math.pow(Math.E, -1*oe.eu));
+			ObservableEU oe1 = new ObservableEU(oe.o, value, game.costFunction.get(k.f).get(oe.o));
+			weightsNormalized.add(oe1);
+		}
+//		System.out.println("Normalized: "+weightsNormalized.toString());
 		
-		for(ObservableConfiguration o : weights.keySet()){
-			double value = (double)weights.get(o)/(sum);
-			weights1.put(o, value);
-			ObservableEU oe = new ObservableEU(o, value);
-			weightsNormalized.add(oe);
+		double sum = 0;
+		for(ObservableEU oe : weightsNormalized){
+			sum += oe.eu;
+		}
+		
+		//Normalize values for probabilities
+		for(ObservableEU oe : weightsNormalized){
+			oe.eu = oe.eu/sum;
 		}
 		
 		Collections.sort(weightsNormalized);
-//		System.out.println(weightsNormalized.toString());
+//		System.out.println("Normalized: "+weightsNormalized.toString());
 		
 		double r = new Random().nextDouble();
 		double total = 0;
@@ -601,19 +553,19 @@ public class GreedyMaxMinSolver {
 			greedyStrategy.get(k).put(game.obs.get(i), greedyStrategy.get(k).get(game.obs.get(i))-1);
 			
 //			System.out.println("o"+game.obs.get(i).id+" "+o1.toString());
-//			System.out.println("o"+game.obs.get(i).id+" EU: "+euAllObs.get(game.obs.get(i)));
-			//if(key != null)
-				//System.out.println("key o"+key.id+" EU: "+euAllObs.get(key));
-//			System.out.println("Cost: "+game.costFunction.get(k.f).get(game.obs.get(i))+" O"+o1.o.id+" EU:"+o1.eu);
-//			System.out.println("rBudget: "+rBudget+" : "+(rBudget-game.costFunction.get(k.f).get(game.obs.get(i))));
+//			System.out.println("o"+game.obs.get(i).id+" EU: "+euAllObs.get(game.obs.get(i))+" maxmin:"+maxmin);
+//			if(key != null)
+//				System.out.println("key o"+key.id+" EU: "+euAllObs.get(key));
+//			System.out.println("Cost: "+game.costFunction.get(k.f).get(game.obs.get(i))+" O"+game.obs.get(i).id+" EU:"+o1.eu);
+//			System.out.println("rBudget: "+rBudget+" : "+(rBudget-game.costFunction.get(k.f).get(game.obs.get(i)))+" : "+minBudgetRequired);
 			
 			if(o1.eu > maxmin && key == null){
-				if((rBudget-game.costFunction.get(k.f).get(game.obs.get(i))) > minBudgetRequired){
+				if((rBudget-game.costFunction.get(k.f).get(game.obs.get(i))) >= minBudgetRequired){
 					maxmin = o1.eu;
 					key = game.obs.get(i);
 				}
 			}else if(o1.eu > maxmin){// && euAllObs.get(key) < euAllObs.get(game.obs.get(i))){  //key is not null here
-				if((rBudget-game.costFunction.get(k.f).get(game.obs.get(i))) > minBudgetRequired){
+				if((rBudget-game.costFunction.get(k.f).get(game.obs.get(i))) >= minBudgetRequired){
 					// have to do >= bc better observable may be available
 					maxmin = o1.eu;
 					key = game.obs.get(i);
@@ -621,12 +573,12 @@ public class GreedyMaxMinSolver {
 			} else {
 				// Calculate the f tildes which have the lowest expected utility
 				// Need to calculate this on the fly
-				euAllObs = calculateEUAllObs(game, greedyStrategy); //this would calculate the wrong value now!
+//				euAllObs = calculateEUAllObs(game, greedyStrategy); //this would calculate the wrong value now!
 				//
 				
 				if(randomIndifferent){
 					if(o1.eu == maxmin ){
-						if((rBudget-game.costFunction.get(k.f).get(game.obs.get(i))) > minBudgetRequired){
+						if((rBudget-game.costFunction.get(k.f).get(game.obs.get(i))) >= minBudgetRequired){
 							int flip = (new Random()).nextInt(2);
 							if(flip == 1){
 								maxmin = o1.eu;
@@ -634,10 +586,9 @@ public class GreedyMaxMinSolver {
 							}
 						}
 					}
-//					if((new Random()))
 				}else{
 					if (o1.eu == maxmin && euAllObs.get(key) < euAllObs.get(game.obs.get(i))) {
-						if((rBudget-game.costFunction.get(k.f).get(game.obs.get(i))) > minBudgetRequired){
+						if((rBudget-game.costFunction.get(k.f).get(game.obs.get(i))) >= minBudgetRequired){
 							maxmin = o1.eu;
 							key = game.obs.get(i);
 						}
@@ -651,7 +602,7 @@ public class GreedyMaxMinSolver {
 		}
 		
 //		System.out.println("Assigning k"+k.id+" to o"+key.id+" "+maxmin);
-		
+//		
 //		System.out.println();
 		
 		ObservableEU sol = new ObservableEU(key, maxmin, game.costFunction.get(k.f).get(key));
@@ -786,6 +737,7 @@ public class GreedyMaxMinSolver {
 			}
 		}
 		ObservableEU o1 = new ObservableEU(key, maxmin);
+	
 		
 		return o1;
 	}
@@ -904,4 +856,7 @@ public class GreedyMaxMinSolver {
 		randomIndifferent = true;
 	}
 	
+	public void setMaxRuntime(int maxRuntime){
+		this.maxRuntime = maxRuntime;
+	}
 }

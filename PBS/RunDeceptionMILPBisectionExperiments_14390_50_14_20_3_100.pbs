@@ -1,0 +1,10 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=1
+#PBS -l walltime=00:01:00
+cd /home/rcf-40/aschlenk/Deception/PBS
+
+
+for NUMBERS in 1 7 13 19 25 ; do
+    qsub DeceptionMILPBisection14390_50_14_20_${NUMBERS}_100.pbs
+    echo "Submitting ... " ${OBS} ${START} ${END}
+done

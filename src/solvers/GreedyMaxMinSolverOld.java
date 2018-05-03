@@ -129,7 +129,7 @@ public class GreedyMaxMinSolverOld {
 		// 3. Only save change if it best so far, otherwise reverse it
 
 		// Get all machines covered by \tilde{f}
-		ArrayList<Systems> machinesMaxMin = new ArrayList<>();
+		ArrayList<Systems> machinesMaxMin = new ArrayList<Systems>();
 		for (Systems k : game.machines)
 			if (greedyStrategy.get(k).get(currentMaxMin.o) != 0)
 				machinesMaxMin.add(k);
@@ -143,7 +143,7 @@ public class GreedyMaxMinSolverOld {
 			//System.out.println("Testing Observable o" + o.id);
 
 			// Get all machines covered by \tilde{f}
-			ArrayList<Systems> sortedMachines = new ArrayList<>();
+			ArrayList<Systems> sortedMachines = new ArrayList<Systems>();
 			for (Systems k : game.machines)
 				if (greedyStrategy.get(k).get(o) != 0)
 					sortedMachines.add(k);
@@ -279,7 +279,7 @@ public class GreedyMaxMinSolverOld {
 		// 3. Only save change if it best so far, otherwise reverse it
 
 		// Get all machines covered by \tilde{f}
-		ArrayList<Systems> machinesMaxMin = new ArrayList<>();
+		ArrayList<Systems> machinesMaxMin = new ArrayList<Systems>();
 		for (Systems k : game.machines)
 			if (greedyStrategy.get(k).get(currentMaxMin.o) != 0)
 				machinesMaxMin.add(k);
@@ -293,7 +293,7 @@ public class GreedyMaxMinSolverOld {
 			//System.out.println("Testing Observable o" + o.id);
 
 			// Get all machines covered by \tilde{f}
-			ArrayList<Systems> sortedMachines = new ArrayList<>();
+			ArrayList<Systems> sortedMachines = new ArrayList<Systems>();
 			for (Systems k : game.machines)
 				if (greedyStrategy.get(k).get(o) != 0)
 					sortedMachines.add(k);

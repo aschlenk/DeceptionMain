@@ -1,5 +1,6 @@
 package solvers;
 
+import java.util.List;
 import java.util.Map;
 
 import models.DeceptionGame;
@@ -14,8 +15,10 @@ public class BisectionAlgorithm {
 	private Map<ObservableConfiguration, Integer> upperConstraints = null;
 	private Map<ObservableConfiguration, Integer> lowerConstraints = null;
 	private Map<Systems, Map<ObservableConfiguration, Integer>> fixedConstraints = null;
+
+	private Map<Systems, ObservableConfiguration> setMaskings = null;
 	
-	private double epsilon = .0001;
+	private double epsilon = .001;
 	
 	private int iterations = 0;
 	
@@ -31,10 +34,15 @@ public class BisectionAlgorithm {
 		this.game = g;
 	}
 	
-	public BisectionAlgorithm(DeceptionGame g, Map<ObservableConfiguration, Integer> constraints){
+	public BisectionAlgorithm(DeceptionGame g, Map<Systems, ObservableConfiguration> setMaskings){
 		this.game = g;
-		this.constraints = constraints;
+		this.setMaskings = setMaskings;		
 	}
+	
+//	public BisectionAlgorithm(DeceptionGame g, Map<ObservableConfiguration, Integer> constraints){
+//		this.game = g;
+//		this.constraints = constraints;
+//	}
 	
 	public BisectionAlgorithm(DeceptionGame g, Map<Systems, Map<ObservableConfiguration, Integer>> constraints, boolean doesntmatter){
 		this.game = g;
@@ -50,6 +58,8 @@ public class BisectionAlgorithm {
 	public void solve() throws Exception{
 		//System.out.println("Solving Bisection Algorithm");
 		
+		
+		
 		double lb = calculateLB();
 		double ub = 0;
 		
@@ -60,11 +70,14 @@ public class BisectionAlgorithm {
 		
 		double start = System.currentTimeMillis();
 		
+		//check if LB is possible
+		boolean feasible = solveFeasibilityProblem(lb);
+		
 		//Bisection Algorithm; continue trying to find max until width is sufficiently (epsilon) small
 		while(width > epsilon){
 			//System.out.println("Alpha: "+alpha+" Width: "+width);
 			
-			boolean feasible = solveFeasibilityProblem(alpha);
+			feasible = solveFeasibilityProblem(alpha);
 			
 			//System.out.println("Feasible: "+feasible);
 			
@@ -102,8 +115,11 @@ public class BisectionAlgorithm {
 		
 		//FeasibilityLP solver = new FeasibilityLP(game, alpha);
 		FeasibilityLP solver = null;
-		if(constraints != null)
-			solver = new FeasibilityLP(game, alpha, constraints);
+		if(setMaskings != null)
+			solver = new FeasibilityLP(game, alpha, setMaskings);
+			
+//		if(constraints != null)
+//			solver = new FeasibilityLP(game, alpha, constraints);
 
 		if(fixedConstraints != null)
 			solver = new FeasibilityLP(game, alpha, fixedConstraints, true);
@@ -111,7 +127,7 @@ public class BisectionAlgorithm {
 		if(lowerConstraints != null || upperConstraints != null)
 			solver = new FeasibilityLP(game, alpha, upperConstraints, lowerConstraints);
 		
-		if(constraints == null && fixedConstraints == null && lowerConstraints == null && upperConstraints == null)
+		if(constraints == null && fixedConstraints == null && lowerConstraints == null && upperConstraints == null && setMaskings == null)
 			solver = new FeasibilityLP(game, alpha);
 		//System.out.println(constraints.toString());
 		
